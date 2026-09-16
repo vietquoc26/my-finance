@@ -957,7 +957,7 @@ async function reconcileFromSheet(items, url){
     var it = untagged[i];
     var newId = "sheet"+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
     try{
-      var res = await fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"tag", row:it.row, id:newId})});
+      var res = await fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"tag", row:it.row, id:newId, date:it.date, amount:it.amount})});
       var out=null; try{ out = JSON.parse(await res.text()); }catch(e){}
       var finalId = (out && out.skipped && out.id) ? out.id : newId;
       markPending(finalId, "add");
