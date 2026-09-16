@@ -1,8 +1,8 @@
 /* Service worker cho "Sổ Tài Chính" — cache app shell để mở được kể cả khi
    mất mạng, và để trình duyệt cho phép "Cài đặt ứng dụng" (yêu cầu bắt buộc
    của PWA). Tăng số ở CACHE mỗi lần bạn cập nhật app để buộc nạp lại cache. */
-var CACHE = "so-tai-chinh-v1";
-var ASSETS = ["./my_finance.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
+var CACHE = "so-tai-chinh-v2";
+var ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(ASSETS); }).then(function(){ return self.skipWaiting(); }));
