@@ -63,7 +63,8 @@
   color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:border-box;}
-body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:max(16px,calc((100vw - 1180px)/2));}
+html{overflow-x:hidden;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:max(16px,calc((100vw - 1180px)/2));overflow-x:hidden;}
 h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance;}
 p{margin:0;}
 button{font-family:inherit;cursor:pointer;}
@@ -82,16 +83,16 @@ button{font-family:inherit;cursor:pointer;}
 @media(min-width:620px){.brand-tag{display:inline;}}
 .period-picker{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:4px 6px;}
 .period-picker select{border:0;background:transparent;color:var(--text);font-family:var(--font-mono);font-size:13px;font-weight:600;padding:4px 4px;}
-.top-actions{display:flex;align-items:center;gap:8px;}
+.top-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:8px;}
 .icon-btn{width:36px;height:36px;display:grid;place-items:center;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text-muted);}
 .icon-btn svg{width:17px;height:17px;}
 .icon-btn:hover{color:var(--text);border-color:var(--border-strong);}
-.dbchip{font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:999px;display:flex;align-items:center;gap:5px;border:1px solid var(--border);color:var(--text-muted);}
+.dbchip{font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:999px;display:flex;align-items:center;gap:5px;border:1px solid var(--border);color:var(--text-muted);white-space:nowrap;}
 .dbchip .dot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);}
 .dbchip.on .dot{background:var(--good);}
 .dbchip.local .dot{background:var(--s1);}
 .dbchip.off .dot{background:var(--critical);}
-.backup-btn{font-size:11px;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);border-radius:999px;padding:5px 11px;}
+.backup-btn{font-size:11px;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);border-radius:999px;padding:5px 11px;white-space:nowrap;}
 .backup-btn:hover{color:var(--text);border-color:var(--border-strong);}
 
 /* ===== TABS ===== */
@@ -104,16 +105,23 @@ section[data-tab]{display:flex;flex-direction:column;gap:18px;scroll-margin-top:
 section[data-tab][hidden]{display:none;} /* [hidden] alone loses to the rule above on specificity — this restores it */
 
 /* ===== PANEL / CARD ===== */
-.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;}
+/* min-width:0 is the fix for the classic CSS grid/flex "blowout": a grid or
+   flex item defaults to min-width:auto (its content's intrinsic width), so
+   a wide table inside a .panel used as a grid cell (.grid2) would otherwise
+   force the whole page wider instead of scrolling within its own card —
+   exactly what was happening on narrow (phone) screens. */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;min-width:0;}
 .panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
 .panel-title{font-size:12.5px;letter-spacing:.06em;color:var(--text-muted);text-transform:uppercase;font-weight:700;}
 .eyebrow{font-family:var(--font-display);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);}
 .panel-sub{font-size:12.5px;color:var(--text-muted);}
-.grid2{display:grid;grid-template-columns:1fr;gap:16px;}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px;min-width:0;}
+.grid2>*{min-width:0;}
 @media(min-width:900px){.grid2{grid-template-columns:1fr 1fr;}}
 
 /* ===== KPI ===== */
-.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;min-width:0;}
+.kpi-grid>*{min-width:0;}
 @media(min-width:720px){.kpi-grid{grid-template-columns:repeat(3,1fr);}}
 @media(min-width:1040px){.kpi-grid{grid-template-columns:repeat(6,1fr);}}
 .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 15px;display:flex;flex-direction:column;gap:5px;}
@@ -155,8 +163,14 @@ section[data-tab][hidden]{display:none;} /* [hidden] alone loses to the rule abo
 .budget-input{width:118px;font-family:var(--font-mono);font-size:12.5px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;}
 
 /* ===== TABLE ===== */
-.table-scroll{overflow-x:auto;}
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;min-width:0;}
 table.dt{width:100%;border-collapse:collapse;font-size:13px;min-width:600px;}
+/* "Giao dịch gần đây" trên Tổng Quan chỉ có 5 cột nội dung ngắn — không cần
+   ép min-width:600px như bảng giao dịch đầy đủ, nên bỏ để nó tự vừa màn
+   hình điện thoại thay vì bắt vuốt ngang chỉ để thấy số tiền. */
+table.dt.compact{min-width:0;}
+table.dt.compact td,table.dt.compact th{padding-inline:6px;}
+@media(max-width:480px){table.dt.compact{font-size:12px;}table.dt.compact .pill{padding:2px 7px;font-size:10px;}}
 table.dt th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);font-weight:700;padding:0 10px 8px;border-bottom:1px solid var(--border);}
 table.dt td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
 table.dt tr:last-child td{border-bottom:none;}
@@ -170,9 +184,11 @@ table.dt tr:hover td{background:var(--surface-2);}
 .empty-note{font-size:13px;color:var(--text-muted);padding:20px 4px;text-align:center;}
 
 /* ===== FORM ===== */
-.form-grid{display:grid;grid-template-columns:1fr;gap:12px;}
+.form-grid{display:grid;grid-template-columns:1fr;gap:12px;min-width:0;}
+.form-grid>*{min-width:0;}
 @media(min-width:760px){.form-grid.tx{grid-template-columns:1fr 1.3fr 1.6fr 1.6fr 1fr auto;align-items:end;}}
 @media(min-width:640px){.form-grid.asset{grid-template-columns:1.3fr 1.6fr 1fr 1.6fr auto;align-items:end;}}
+@media(min-width:640px){.form-grid.sheetsync{grid-template-columns:1fr auto auto;align-items:end;}}
 .field{display:flex;flex-direction:column;gap:5px;}
 .field label{font-size:11.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;}
 .field input,.field select{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:9px 11px;font-family:inherit;font-size:13.5px;}
@@ -258,7 +274,7 @@ table.dt tr:hover td{background:var(--surface-2);}
         <span class="panel-title" style="margin:0;">Giao dịch gần đây</span>
         <button class="rowbtn" id="btnGotoTx" style="color:var(--accent);border-color:var(--accent);">Xem tất cả →</button>
       </div>
-      <div class="table-scroll"><table class="dt" id="dashRecentTable"></table></div>
+      <div class="table-scroll"><table class="dt compact" id="dashRecentTable"></table></div>
     </div>
   </section>
 
@@ -280,14 +296,19 @@ table.dt tr:hover td{background:var(--surface-2);}
       <span id="syncHintTxt">Web app này lưu giao dịch riêng, không tự động kéo dữ liệu mới từ Google Sheet.</span>
     </div>
     <div class="panel" id="sheetBridgePanel" hidden>
-      <div class="panel-head"><span class="panel-title" style="margin:0;">Đồng bộ tự động sang Google Sheet</span></div>
-      <p class="panel-sub" style="margin-bottom:10px;">Dán URL Web App (Apps Script) đã triển khai — mỗi giao dịch mới thêm ở đây sẽ tự động được ghi thêm vào Google Sheet của bạn. Xem hướng dẫn triển khai kèm theo file <code>GhiSoGiaoDich.gs</code>.</p>
-      <div class="form-grid" style="grid-template-columns:1fr auto auto;max-width:760px;">
+      <div class="panel-head"><span class="panel-title" style="margin:0;">Đồng bộ 2 chiều với Google Sheet</span></div>
+      <p class="panel-sub" style="margin-bottom:10px;">Dán URL Web App (Apps Script) đã triển khai — giao dịch thêm/xóa ở đây sẽ tự ghi sang Google Sheet, và ngược lại: giao dịch bạn thêm/sửa/xóa thẳng trên Sheet cũng sẽ tự về app (kiểm tra lại mỗi ~15-20 giây, và ngay khi bạn mở lại app). Xem hướng dẫn triển khai kèm theo file <code>GhiSoGiaoDich.gs</code> (cần bản mới nhất — Phiên bản 4).</p>
+      <div class="form-grid sheetsync" style="max-width:760px;">
         <div class="field"><label for="sheetUrl">URL Web App</label><input type="url" id="sheetUrl" placeholder="https://script.google.com/macros/s/.../exec"></div>
         <button type="button" class="btn btn-secondary" id="btnSheetTest">Kiểm tra</button>
         <button type="button" class="btn btn-primary" id="btnSheetSave">Lưu</button>
       </div>
       <p class="note-inline" id="sheetBridgeStatus" style="margin-top:8px;"></p>
+      <p class="note-inline" id="sheetSyncNowRow" style="margin-top:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <button type="button" class="btn btn-secondary" id="btnSheetSyncNow">Đồng bộ ngay</button>
+        <button type="button" class="btn btn-secondary" id="btnDedupeTx" title="Dùng khi thấy giao dịch bị nhân đôi sau lần đầu bật đồng bộ 2 chiều">Dọn giao dịch trùng lặp</button>
+        <span id="sheetSyncNowStatus" style="color:var(--text-faint);"></span>
+      </p>
     </div>
     <div class="panel">
       <div class="panel-head"><span class="panel-title" style="margin:0;">Sổ giao dịch</span></div>
@@ -539,7 +560,7 @@ function updateModeCopy(mode){
     hint.innerHTML = 'Web app này lưu giao dịch riêng, không tự động kéo dữ liệu mới từ Google Sheet. Muốn nạp thêm giao dịch cũ hoặc dữ liệu vừa cập nhật trong Sheet, nhắn Claude: <code>đồng bộ giao dịch từ Google Sheet vào web app</code>. (Đồng bộ tự động 2 chiều chỉ khả dụng ở bản file .html chạy trực tiếp trên trình duyệt.)';
     footer.textContent = 'Sổ Tài Chính · dữ liệu lưu trực tuyến, riêng tư cho bạn · nguồn: Google Sheet "Sổ Quản Lý Tài Chính Cá Nhân"';
   } else {
-    hint.innerHTML = 'Đây là bản chạy trực tiếp trong trình duyệt này — dữ liệu lưu ngay trên máy bạn (localStorage), không đồng bộ sang thiết bị khác. Bấm <b>Xuất dữ liệu</b> để sao lưu ra file .csv, hoặc <b>Nhập dữ liệu</b> để nạp lại. Có thể bật đồng bộ tự động sang Google Sheet ở khung bên dưới.';
+    hint.innerHTML = 'Đây là bản chạy trực tiếp trong trình duyệt này — dữ liệu lưu ngay trên máy bạn (localStorage), không đồng bộ sang thiết bị khác. Bấm <b>Xuất dữ liệu</b> để sao lưu ra file .csv, hoặc <b>Nhập dữ liệu</b> để nạp lại. Có thể bật đồng bộ 2 chiều với Google Sheet ở khung bên dưới.';
     footer.textContent = 'Sổ Tài Chính · dữ liệu lưu ngay trên trình duyệt này · nguồn: Google Sheet "Sổ Quản Lý Tài Chính Cá Nhân"';
   }
 }
@@ -590,6 +611,7 @@ async function initDB(){
         state.settings.sheetWebhookUrl=v.sheetWebhookUrl;
         var urlInp=document.getElementById("sheetUrl");
         if(urlInp && document.activeElement!==urlInp) urlInp.value=v.sheetWebhookUrl;
+        if(v.sheetWebhookUrl && mode==="local") startSheetPolling();
       }
     }
     renderAll();
@@ -757,11 +779,29 @@ function initBackup(){
   });
 }
 
-/* ================= SHEETS BRIDGE (local/standalone mode only — Apps Script Web App) ================= */
+/* ================= SHEETS BRIDGE (local/standalone mode only — Apps Script Web App) =================
+   Đồng bộ 2 chiều với Google Sheet, cách hoạt động:
+   - App → Sheet: mỗi lần thêm/xóa giao dịch trong app, gọi ngay action
+     "add"/"delete" (như trước).
+   - Sheet → App: vì Apps Script không "đẩy" được dữ liệu về trình duyệt
+     (không có WebSocket), app tự hỏi lại Sheet định kỳ bằng action "list"
+     (gần-thời-gian-thực, không phải tức thì). Những dòng bạn tự gõ tay
+     trên Sheet (chưa có ID) sẽ được app gắn ID ngược lại (action "tag") để
+     những lần đồng bộ sau nhận diện đúng dòng.
+   An toàn dữ liệu: một giao dịch chỉ bị TỰ ĐỘNG XÓA khỏi app khi trước đó
+   app đã từng thấy chính nó tồn tại trong Sheet (nhớ trong "syncedIds",
+   lưu ở localStorage) — nghĩa là dữ liệu có sẵn trong app trước khi bạn
+   bật đồng bộ (ví dụ các giao dịch mẫu ban đầu) sẽ không bao giờ bị app tự
+   xóa, kể cả khi chúng không có trong Sheet. */
 function setSheetStatus(msg, kind){
   var p=document.getElementById("sheetBridgeStatus"); if(!p) return;
   p.textContent = msg;
   p.style.color = kind==="ok" ? "var(--good)" : kind==="warn" ? "var(--critical)" : "var(--text-faint)";
+}
+function setSyncNowMsg(msg, warn){
+  var s=document.getElementById("sheetSyncNowStatus"); if(!s) return;
+  s.textContent = msg;
+  s.style.color = warn ? "var(--critical)" : "var(--text-faint)";
 }
 async function saveSheetWebhookUrl(url){
   state.settings.sheetWebhookUrl = url;
@@ -779,7 +819,8 @@ function initSheetBridge(){
   document.getElementById("btnSheetSave").addEventListener("click", async function(){
     var url = urlInp.value.trim();
     await saveSheetWebhookUrl(url);
-    setSheetStatus(url ? "Đã lưu. Giao dịch mới sẽ tự động gửi sang Google Sheet." : "Đã tắt đồng bộ tự động.", url?"ok":"");
+    setSheetStatus(url ? "Đã lưu. Giao dịch mới sẽ tự động gửi sang Google Sheet, và app sẽ tự kiểm tra Sheet định kỳ để cập nhật ngược lại." : "Đã tắt đồng bộ tự động.", url?"ok":"");
+    if(url) startSheetPolling();
   });
   document.getElementById("btnSheetTest").addEventListener("click", async function(){
     var url = urlInp.value.trim();
@@ -792,17 +833,165 @@ function initSheetBridge(){
       setSheetStatus(ok ? "Kết nối thành công! Giao dịch mới sẽ tự động ghi vào Sheet. ✓" : "Đã gửi được yêu cầu nhưng không đọc được phản hồi — kiểm tra thử trong Google Sheet xem có dòng mới không.", ok?"ok":"warn");
     }catch(e){ setSheetStatus("Không kết nối được — kiểm tra lại URL và bước triển khai (Anyone can access) của Web App.", "warn"); }
   });
+  var syncNowBtn = document.getElementById("btnSheetSyncNow");
+  if(syncNowBtn) syncNowBtn.addEventListener("click", function(){ pullFromSheet(true); });
+  var dedupeBtn = document.getElementById("btnDedupeTx");
+  if(dedupeBtn) dedupeBtn.addEventListener("click", async function(){
+    var groups = findDuplicateTxGroups();
+    if(groups.length===0){ setSyncNowMsg("Không tìm thấy giao dịch trùng lặp nào.", false); return; }
+    var extra = groups.reduce(function(s,g){ return s+g.length-1; }, 0);
+    if(!confirm("Tìm thấy "+groups.length+" nhóm giao dịch trùng lặp ("+extra+" dòng thừa cần xóa, mỗi nhóm giữ lại đúng 1 giao dịch). Xóa các bản trùng ngay bây giờ? Không thể hoàn tác.")) return;
+    var res = await dedupeDuplicateTx();
+    setSyncNowMsg("Đã xóa "+res.removed+" giao dịch trùng lặp trong "+res.groups+" nhóm.", false);
+  });
 }
+
+/* ---- Dọn giao dịch trùng lặp ----
+   Xảy ra chủ yếu ở lần đầu bật đồng bộ 2 chiều: những dòng có sẵn trong
+   Sheet nhưng chưa có ID (dữ liệu cũ) được app nhập vào như giao dịch MỚI,
+   trong khi app cũng đã có sẵn đúng giao dịch đó từ trước (ví dụ dữ liệu
+   mẫu ban đầu) → thành 2 bản giống hệt nhau. Coi 2 giao dịch là trùng nhau
+   khi cùng ngày/loại/danh mục/diễn giải/số tiền. Ưu tiên giữ lại bản đã
+   liên kết với Google Sheet (có trong syncedIds) để lần đồng bộ sau vẫn ổn
+   định; bản còn lại chỉ xóa cục bộ (không đụng gì tới Google Sheet, vì bản
+   bị xóa vốn chưa từng có trên Sheet). */
+function findDuplicateTxGroups(){
+  var groups = {};
+  state.tx.forEach(function(t){
+    if(!t._id) return;
+    var key = [t.date||"", t.type||"", t.category||"", t.note||"", Number(t.amount)||0].join("|");
+    (groups[key] = groups[key] || []).push(t);
+  });
+  return Object.keys(groups).map(function(k){ return groups[k]; }).filter(function(g){ return g.length>1; });
+}
+async function dedupeDuplicateTx(){
+  var groups = findDuplicateTxGroups();
+  if(groups.length===0 || !state.db) return { removed:0, groups:0 };
+  var col = state.db.collection("tx");
+  var removed = 0;
+  for(var i=0;i<groups.length;i++){
+    var g = groups[i];
+    var keepIdx = g.findIndex(function(t){ return syncedIds[t._id]; });
+    if(keepIdx===-1) keepIdx = 0;
+    for(var j=0;j<g.length;j++){
+      if(j===keepIdx) continue;
+      try{ await col.doc(g[j]._id).delete(); removed++; }catch(e){}
+    }
+  }
+  return { removed:removed, groups:groups.length };
+}
+
+/* ---- App → Sheet (đẩy) ---- */
 function pushToSheet(tx){
   var url = state.settings.sheetWebhookUrl;
   if(!url || !tx._id) return;
+  markPending(tx._id, "add");
   var payload = { action:"add", id:tx._id, date:tx.date, type:tx.type, category:tx.category, note:tx.note||"", amount:tx.amount };
   fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(payload)}).catch(function(){ /* best-effort; Apps Script CORS responses are often opaque */ });
 }
 function pushDeleteToSheet(id){
   var url = state.settings.sheetWebhookUrl;
   if(!url || !id) return;
+  markPending(id, "delete");
   fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"delete", id:id})}).catch(function(){ /* best-effort */ });
+}
+
+/* ---- Sheet → App (kéo về, định kỳ) ---- */
+var SHEET_POLL_MS = 18000;
+var SHEET_GRACE_MS = 20000;
+var SHEET_SYNCED_KEY = "sotc_sheet_synced_ids_v1";
+var sheetPolling = false, sheetPollTimer = null, sheetPullInFlight = false;
+var pendingSync = {}; // id -> {type:"add"|"delete", ts}
+var syncedIds = (function(){ try{ var raw=localStorage.getItem(SHEET_SYNCED_KEY); return raw?JSON.parse(raw):{}; }catch(e){ return {}; } })();
+
+function markPending(id, type){ if(id) pendingSync[id] = { type:type, ts:Date.now() }; }
+function cleanupPending(){
+  var now=Date.now();
+  Object.keys(pendingSync).forEach(function(id){ if(now-pendingSync[id].ts > SHEET_GRACE_MS) delete pendingSync[id]; });
+}
+function saveSyncedIds(){ try{ localStorage.setItem(SHEET_SYNCED_KEY, JSON.stringify(syncedIds)); }catch(e){} }
+function toTxDoc(it){ return { date: it.date, type: it.type||"", category: it.category||"", note: it.note||"", amount: Number(it.amount)||0 }; }
+function sameTx(a,b){ return a.date===b.date && a.type===b.type && a.category===b.category && (a.note||"")===(b.note||"") && Number(a.amount)===Number(b.amount); }
+
+function startSheetPolling(){
+  if(sheetPolling) return;
+  sheetPolling = true;
+  pullFromSheet();
+  sheetPollTimer = setInterval(function(){ if(!document.hidden) pullFromSheet(); }, SHEET_POLL_MS);
+  document.addEventListener("visibilitychange", function(){ if(!document.hidden) pullFromSheet(); });
+  window.addEventListener("focus", function(){ pullFromSheet(); });
+}
+
+async function pullFromSheet(manual){
+  var url = state.settings.sheetWebhookUrl;
+  if(!url || !state.db) return;
+  if(sheetPullInFlight){ if(manual) setSyncNowMsg("Đang có một lượt đồng bộ khác chạy, đợi chút…", false); return; }
+  sheetPullInFlight = true;
+  if(manual) setSyncNowMsg("Đang đồng bộ…", false);
+  try{
+    var res = await fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"list"})});
+    var data=null; try{ data = JSON.parse(await res.text()); }catch(e){}
+    if(!data || data.status!=="ok" || !Array.isArray(data.items)){
+      if(manual) setSyncNowMsg("Không đọc được dữ liệu từ Sheet — kiểm tra URL/bản triển khai.", true);
+      return;
+    }
+    cleanupPending();
+    await reconcileFromSheet(data.items, url);
+    if(manual) setSyncNowMsg("Đã đồng bộ lúc " + new Date().toLocaleTimeString("vi-VN") + ".", false);
+  }catch(e){
+    if(manual) setSyncNowMsg("Không kết nối được tới Google Sheet.", true);
+  }finally{
+    sheetPullInFlight = false;
+  }
+}
+
+async function reconcileFromSheet(items, url){
+  var col = state.db.collection("tx");
+  var sheetIds = {}, untagged = [];
+  items.forEach(function(it){ if(it.id) sheetIds[it.id]=it; else untagged.push(it); });
+
+  // Dòng bạn tự gõ tay trực tiếp trên Sheet (chưa có ID) — tạo ID mới, gắn
+  // ngược lên đúng dòng đó trên Sheet, rồi coi như một giao dịch bình
+  // thường từ đây trở đi.
+  for(var i=0;i<untagged.length;i++){
+    var it = untagged[i];
+    var newId = "sheet"+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+    try{
+      var res = await fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"tag", row:it.row, id:newId})});
+      var out=null; try{ out = JSON.parse(await res.text()); }catch(e){}
+      var finalId = (out && out.skipped && out.id) ? out.id : newId;
+      markPending(finalId, "add");
+      sheetIds[finalId] = it;
+    }catch(e){ /* thử gắn lại ở lượt đồng bộ sau */ }
+  }
+
+  var localById = {};
+  state.tx.forEach(function(t){ if(t._id) localById[t._id]=t; });
+
+  var idKeys = Object.keys(sheetIds);
+  for(var j=0;j<idKeys.length;j++){
+    var id = idKeys[j];
+    syncedIds[id] = true;
+    if(pendingSync[id] && pendingSync[id].type==="delete") continue; // vừa xóa ở app, đợi Sheet ghi nhận — đừng hồi sinh
+    var incoming = toTxDoc(sheetIds[id]);
+    var existing = localById[id];
+    if(existing && sameTx(existing, incoming)) continue; // không đổi gì — bỏ qua để tránh ghi/re-render thừa
+    try{ await col.doc(id).set(incoming); }catch(e){}
+  }
+
+  // Giao dịch từng được xác nhận có trong Sheet (syncedIds) nhưng giờ biến
+  // mất khỏi danh sách Sheet trả về → bị xóa trực tiếp trên Sheet, xóa theo
+  // trong app. Giao dịch chưa từng thấy trong Sheet (dữ liệu có sẵn trước
+  // khi bật đồng bộ) không bao giờ bị đụng tới.
+  var toDelete = [];
+  state.tx.forEach(function(t){
+    if(!t._id || sheetIds[t._id] || !syncedIds[t._id] || pendingSync[t._id]) return;
+    toDelete.push(t._id);
+  });
+  for(var k=0;k<toDelete.length;k++){
+    try{ await col.doc(toDelete[k]).delete(); delete syncedIds[toDelete[k]]; }catch(e){}
+  }
+  saveSyncedIds();
 }
 
 /* ================= DATA HELPERS ================= */
