@@ -1,0 +1,1342 @@
+
+<title>Sổ Tài Chính</title>
+<meta name="description" content="Bảng điều khiển quản lý tài chính cá nhân — thu nhập, chi tiêu, ngân sách, đầu tư và tài sản, đồng bộ từ Google Sheet.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F7FAF7; --surface:#FFFFFF; --surface-2:#EFF5F1; --surface-3:#E3ECE6;
+  --border:#D7E3DB; --border-strong:#BFD1C6;
+  --text:#132019; --text-muted:#57685E; --text-faint:#87968D;
+  --accent:#1BAF7A; --accent-soft:#DCF3E7; --on-accent:#062015;
+  --accent-2:#B8790A; --accent-2-soft:#F7E9CE; --on-accent-2:#241800;
+  --good:#0CA30C; --good-soft:#DFF3DA;
+  --warning:#946a00; --warning-soft:#FBEEC8;
+  --critical:#D03B3B; --critical-soft:#FBDFDD;
+  --s1:#2A78D6; --s2:#EB6834; --s3:#1BAF7A; --s4:#EDA100; --s5:#E87BA4; --s6:#008300;
+  --font-display:'Fraunces',Georgia,serif;
+  --font-body:'Be Vietnam Pro',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,monospace;
+  --radius:8px; --radius-lg:14px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1613; --surface:#15211C; --surface-2:#1B2A23; --surface-3:#24362D;
+    --border:#2B3F35; --border-strong:#3C5346;
+    --text:#E8F1EC; --text-muted:#9FB3A6; --text-faint:#6D8175;
+    --accent:#199E70; --accent-soft:#153A2C; --on-accent:#EAFBF3;
+    --accent-2:#C98500; --accent-2-soft:#3A2B0A; --on-accent-2:#FFF4DC;
+    --good:#3FC23F; --good-soft:#153A16;
+    --warning:#F0B72E; --warning-soft:#3A2E08;
+    --critical:#E66767; --critical-soft:#3D1C1C;
+    --s1:#3987E5; --s2:#D95926; --s3:#199E70; --s4:#C98500; --s5:#D55181; --s6:#3FA53F;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1613; --surface:#15211C; --surface-2:#1B2A23; --surface-3:#24362D;
+  --border:#2B3F35; --border-strong:#3C5346;
+  --text:#E8F1EC; --text-muted:#9FB3A6; --text-faint:#6D8175;
+  --accent:#199E70; --accent-soft:#153A2C; --on-accent:#EAFBF3;
+  --accent-2:#C98500; --accent-2-soft:#3A2B0A; --on-accent-2:#FFF4DC;
+  --good:#3FC23F; --good-soft:#153A16;
+  --warning:#F0B72E; --warning-soft:#3A2E08;
+  --critical:#E66767; --critical-soft:#3D1C1C;
+  --s1:#3987E5; --s2:#D95926; --s3:#199E70; --s4:#C98500; --s5:#D55181; --s6:#3FA53F;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:max(16px,calc((100vw - 1180px)/2));}
+h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance;}
+p{margin:0;}
+button{font-family:inherit;cursor:pointer;}
+::selection{background:var(--accent);color:var(--on-accent);}
+.tnum{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
+.wrap{max-width:1180px;margin-inline:auto;}
+
+/* ===== TOPBAR ===== */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--bg);border-bottom:1px solid var(--border);padding-block:12px;}
+.topbar-inner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.brand{display:flex;align-items:baseline;gap:9px;}
+.brand-mark{font-family:var(--font-display);font-size:23px;font-weight:700;color:var(--text);}
+.brand-tag{font-size:12px;color:var(--text-muted);display:none;}
+@media(min-width:620px){.brand-tag{display:inline;}}
+.period-picker{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:4px 6px;}
+.period-picker select{border:0;background:transparent;color:var(--text);font-family:var(--font-mono);font-size:13px;font-weight:600;padding:4px 4px;}
+.top-actions{display:flex;align-items:center;gap:8px;}
+.icon-btn{width:36px;height:36px;display:grid;place-items:center;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text-muted);}
+.icon-btn svg{width:17px;height:17px;}
+.icon-btn:hover{color:var(--text);border-color:var(--border-strong);}
+.dbchip{font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:999px;display:flex;align-items:center;gap:5px;border:1px solid var(--border);color:var(--text-muted);}
+.dbchip .dot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);}
+.dbchip.on .dot{background:var(--good);}
+.dbchip.local .dot{background:var(--s1);}
+.dbchip.off .dot{background:var(--critical);}
+.backup-btn{font-size:11px;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);border-radius:999px;padding:5px 11px;}
+.backup-btn:hover{color:var(--text);border-color:var(--border-strong);}
+
+/* ===== TABS ===== */
+.tabbar{display:flex;gap:4px;overflow-x:auto;padding-block:10px;border-bottom:1px solid var(--border);margin-bottom:20px;}
+.tabbtn{flex:0 0 auto;border:1px solid transparent;background:transparent;color:var(--text-muted);font-weight:600;font-size:13.5px;padding:9px 15px;border-radius:999px;white-space:nowrap;}
+.tabbtn:hover{color:var(--text);}
+.tabbtn.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);}
+main{padding-block:0 60px;display:flex;flex-direction:column;gap:18px;}
+section[data-tab]{display:flex;flex-direction:column;gap:18px;scroll-margin-top:76px;}
+section[data-tab][hidden]{display:none;} /* [hidden] alone loses to the rule above on specificity — this restores it */
+
+/* ===== PANEL / CARD ===== */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;}
+.panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.panel-title{font-size:12.5px;letter-spacing:.06em;color:var(--text-muted);text-transform:uppercase;font-weight:700;}
+.eyebrow{font-family:var(--font-display);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);}
+.panel-sub{font-size:12.5px;color:var(--text-muted);}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px;}
+@media(min-width:900px){.grid2{grid-template-columns:1fr 1fr;}}
+
+/* ===== KPI ===== */
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+@media(min-width:720px){.kpi-grid{grid-template-columns:repeat(3,1fr);}}
+@media(min-width:1040px){.kpi-grid{grid-template-columns:repeat(6,1fr);}}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 15px;display:flex;flex-direction:column;gap:5px;}
+.kpi .l{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);font-weight:700;}
+.kpi .v{font-family:var(--font-mono);font-size:19px;font-weight:700;line-height:1.15;}
+.kpi .v.neg{color:var(--critical);}
+.kpi .v.pos{color:var(--good);}
+
+/* ===== BANNER ===== */
+.banner{display:flex;align-items:center;gap:10px;border-radius:var(--radius-lg);padding:12px 16px;font-size:13.5px;font-weight:600;border:1px solid transparent;}
+.banner.ok{background:var(--good-soft);color:var(--good);border-color:var(--good);}
+.banner.warn{background:var(--critical-soft);color:var(--critical);border-color:var(--critical);}
+.banner svg{width:18px;height:18px;flex:none;}
+
+/* ===== CHART ===== */
+.chart-box{position:relative;}
+.chart-box svg{width:100%;height:auto;display:block;overflow:visible;}
+.chart-legend{display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap;}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);font-weight:600;}
+.legend-swatch{width:10px;height:10px;border-radius:2px;flex:none;}
+.chart-empty{font-size:13px;color:var(--text-muted);padding:34px 0;text-align:center;}
+.ctooltip{position:fixed;pointer-events:none;background:var(--surface-3);border:1px solid var(--border-strong);border-radius:7px;padding:8px 11px;font-size:12px;line-height:1.5;box-shadow:0 6px 18px rgba(0,0,0,.22);z-index:200;opacity:0;transition:opacity .08s;max-width:220px;}
+.ctooltip.show{opacity:1;}
+.ctooltip b{font-family:var(--font-mono);}
+
+/* ===== METER ===== */
+.meter-row{display:flex;flex-direction:column;gap:5px;padding:10px 0;border-bottom:1px solid var(--border);}
+.meter-row:last-child{border-bottom:0;}
+.meter-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:13px;flex-wrap:wrap;}
+.meter-name{font-weight:700;}
+.meter-nums{font-family:var(--font-mono);font-size:12px;color:var(--text-muted);}
+.meter-track{height:9px;border-radius:999px;background:var(--surface-3);overflow:hidden;}
+.meter-fill{height:100%;border-radius:999px;}
+.meter-tag{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;}
+.meter-tag.good{background:var(--good-soft);color:var(--good);}
+.meter-tag.warning{background:var(--warning-soft);color:var(--warning);}
+.meter-tag.critical{background:var(--critical-soft);color:var(--critical);}
+.meter-tag.flat{background:var(--surface-3);color:var(--text-faint);}
+.budget-input{width:118px;font-family:var(--font-mono);font-size:12.5px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;}
+
+/* ===== TABLE ===== */
+.table-scroll{overflow-x:auto;}
+table.dt{width:100%;border-collapse:collapse;font-size:13px;min-width:600px;}
+table.dt th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);font-weight:700;padding:0 10px 8px;border-bottom:1px solid var(--border);}
+table.dt td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+table.dt tr:last-child td{border-bottom:none;}
+table.dt tr:hover td{background:var(--surface-2);}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;}
+.pill.income{background:var(--good-soft);color:var(--good);}
+.pill.expense{background:var(--accent-2-soft);color:var(--accent-2);}
+.pill.invest{background:var(--s1);color:#fff;}
+.rowbtn{border:1px solid var(--border);background:var(--surface);color:var(--text-muted);border-radius:6px;padding:4px 9px;font-size:11.5px;font-weight:600;}
+.rowbtn:hover{color:var(--critical);border-color:var(--critical);}
+.empty-note{font-size:13px;color:var(--text-muted);padding:20px 4px;text-align:center;}
+
+/* ===== FORM ===== */
+.form-grid{display:grid;grid-template-columns:1fr;gap:12px;}
+@media(min-width:760px){.form-grid.tx{grid-template-columns:1fr 1.3fr 1.6fr 1.6fr 1fr auto;align-items:end;}}
+@media(min-width:640px){.form-grid.asset{grid-template-columns:1.3fr 1.6fr 1fr 1.6fr auto;align-items:end;}}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:11.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;}
+.field input,.field select{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:9px 11px;font-family:inherit;font-size:13.5px;}
+.field input:focus,.field select:focus{border-color:var(--accent);}
+.btn{border:none;border-radius:var(--radius);padding:10px 18px;font-weight:700;font-size:13.5px;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;}
+.btn-primary{background:var(--accent);color:var(--on-accent);}
+.btn-primary:hover{filter:brightness(1.08);}
+.btn-secondary{background:transparent;border:1px solid var(--border-strong);color:var(--text);}
+.btn-secondary:hover{background:var(--surface-2);}
+.sync-hint{display:flex;gap:9px;align-items:flex-start;background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--radius-lg);padding:12px 15px;font-size:12.5px;color:var(--text);}
+.sync-hint svg{width:16px;height:16px;flex:none;color:var(--accent);margin-top:1px;}
+.sync-hint code{background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-family:var(--font-mono);font-size:11.5px;}
+
+/* ===== FILTER ROW ===== */
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px;}
+.filter-row select,.filter-row input{background:var(--surface-2);border:1px solid var(--border);border-radius:999px;color:var(--text);padding:6px 12px;font-size:12.5px;font-family:inherit;}
+
+/* ===== MISC ===== */
+.subtotal-row td{font-weight:700;background:var(--surface-2);}
+.note-inline{font-size:11.5px;color:var(--text-faint);font-style:italic;}
+.footer-note{text-align:center;color:var(--text-faint);font-size:11.5px;padding-block:12px 30px;}
+.section-divider{display:flex;align-items:center;justify-content:space-between;margin-top:6px;}
+.warn-inline{font-size:11.5px;color:var(--critical);font-weight:700;}
+</style>
+
+<div class="topbar">
+  <div class="wrap topbar-inner">
+    <div class="brand">
+      <span class="brand-mark">Sổ Tài Chính</span>
+      <span class="brand-tag">Thu chi · Ngân sách · Đầu tư · Tài sản</span>
+    </div>
+    <div class="top-actions">
+      <div class="period-picker" title="Tháng/Năm đang xem">
+        <select id="pkMonth"></select>
+        <span style="color:var(--text-faint);">/</span>
+        <select id="pkYear"></select>
+      </div>
+      <span class="dbchip" id="dbChip"><span class="dot"></span><span id="dbChipTxt">Đang kết nối…</span></span>
+      <button class="backup-btn" id="btnExport" title="Tải file sao lưu dữ liệu (.csv)">Xuất dữ liệu</button>
+      <button class="backup-btn" id="btnImport" title="Nạp lại dữ liệu từ file sao lưu (.csv)">Nhập dữ liệu</button>
+      <input type="file" id="fileImport" accept=".csv,text/csv,.json,application/json" hidden>
+      <button class="icon-btn" id="btnTheme" title="Đổi giao diện sáng/tối" aria-label="Đổi giao diện sáng/tối"></button>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+  <div class="tabbar" id="tabbar">
+    <button class="tabbtn" data-tab="dashboard">Tổng Quan</button>
+    <button class="tabbtn" data-tab="tx">Giao Dịch</button>
+    <button class="tabbtn" data-tab="budget">Ngân Sách</button>
+    <button class="tabbtn" data-tab="invest">Đầu Tư</button>
+    <button class="tabbtn" data-tab="assets">Tài Sản</button>
+  </div>
+
+  <!-- ================= DASHBOARD ================= -->
+  <section data-tab="dashboard">
+    <div class="kpi-grid" id="dashKpi"></div>
+    <div id="dashBanner"></div>
+    <div id="dashForecast"></div>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title" style="margin:0;">Điểm sức khỏe tài chính</span></div>
+      <div id="healthScore"></div>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-head">
+          <span class="eyebrow">Cả năm</span>
+          <span class="panel-title" style="margin:0;">Thu nhập / Chi tiêu / Đầu tư theo tháng</span>
+        </div>
+        <div class="chart-box" id="chartYear"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <span class="eyebrow">Tháng đang chọn</span>
+          <span class="panel-title" style="margin:0;">Cơ cấu chi tiêu theo danh mục</span>
+        </div>
+        <div class="chart-box" id="chartExpDonut"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title" style="margin:0;">Giao dịch gần đây</span>
+        <button class="rowbtn" id="btnGotoTx" style="color:var(--accent);border-color:var(--accent);">Xem tất cả →</button>
+      </div>
+      <div class="table-scroll"><table class="dt" id="dashRecentTable"></table></div>
+    </div>
+  </section>
+
+  <!-- ================= GIAO DỊCH ================= -->
+  <section data-tab="tx" hidden>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title" style="margin:0;">Thêm giao dịch</span></div>
+      <form class="form-grid tx" id="txForm">
+        <div class="field"><label for="txDate">Ngày</label><input type="date" id="txDate" required></div>
+        <div class="field"><label for="txType">Loại</label><select id="txType"></select></div>
+        <div class="field"><label for="txCat">Danh mục</label><select id="txCat"></select></div>
+        <div class="field"><label for="txNote">Diễn giải</label><input type="text" id="txNote" placeholder="VD: Ăn tối với bạn bè"></div>
+        <div class="field"><label for="txAmt">Số tiền (VNĐ)</label><input type="number" id="txAmt" min="0" step="1000" required placeholder="0"></div>
+        <button type="submit" class="btn btn-primary">+ Thêm</button>
+      </form>
+    </div>
+    <div class="sync-hint" id="syncHint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg>
+      <span id="syncHintTxt">Web app này lưu giao dịch riêng, không tự động kéo dữ liệu mới từ Google Sheet.</span>
+    </div>
+    <div class="panel" id="sheetBridgePanel" hidden>
+      <div class="panel-head"><span class="panel-title" style="margin:0;">Đồng bộ tự động sang Google Sheet</span></div>
+      <p class="panel-sub" style="margin-bottom:10px;">Dán URL Web App (Apps Script) đã triển khai — mỗi giao dịch mới thêm ở đây sẽ tự động được ghi thêm vào Google Sheet của bạn. Xem hướng dẫn triển khai kèm theo file <code>GhiSoGiaoDich.gs</code>.</p>
+      <div class="form-grid" style="grid-template-columns:1fr auto auto;max-width:760px;">
+        <div class="field"><label for="sheetUrl">URL Web App</label><input type="url" id="sheetUrl" placeholder="https://script.google.com/macros/s/.../exec"></div>
+        <button type="button" class="btn btn-secondary" id="btnSheetTest">Kiểm tra</button>
+        <button type="button" class="btn btn-primary" id="btnSheetSave">Lưu</button>
+      </div>
+      <p class="note-inline" id="sheetBridgeStatus" style="margin-top:8px;"></p>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title" style="margin:0;">Sổ giao dịch</span></div>
+      <div class="filter-row">
+        <select id="fltScope"><option value="month">Tháng đang chọn</option><option value="year">Cả năm đang chọn</option><option value="all">Tất cả</option></select>
+        <select id="fltType"><option value="">Tất cả loại</option></select>
+        <input type="text" id="fltSearch" placeholder="Tìm theo diễn giải/danh mục…">
+      </div>
+      <div class="table-scroll"><table class="dt" id="txTable"></table></div>
+    </div>
+  </section>
+
+  <!-- ================= NGÂN SÁCH ================= -->
+  <section data-tab="budget" hidden>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title" style="margin:0;">Ngân sách vs Thực tế — Tháng đang chọn</span>
+      </div>
+      <p class="panel-sub" style="margin-bottom:10px;">Chỉnh ngân sách hàng tháng cho từng danh mục chi tiêu — thanh sẽ tự đổi màu khi vượt ngân sách.</p>
+      <div id="budgetMeters"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title" style="margin:0;">So sánh chi tiêu: Tháng này vs Tháng trước</span>
+      </div>
+      <div id="monthCompare"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="eyebrow">Cả năm</span>
+        <span class="panel-title" style="margin:0;">Lịch sử Ngân sách vs Thực tế theo tháng</span>
+      </div>
+      <div class="chart-box" id="chartBudgetHist"></div>
+    </div>
+  </section>
+
+  <!-- ================= ĐẦU TƯ ================= -->
+  <section data-tab="invest" hidden>
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title" style="margin:0;">Dòng tiền tháng đang chọn</span></div>
+        <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);" id="investKpi"></div>
+        <div class="field" style="margin-top:14px;max-width:220px;">
+          <label for="investPct">Tỷ lệ đầu tư đề xuất (% số dư)</label>
+          <input type="number" id="investPct" min="0" max="100" step="1">
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title" style="margin:0;">Phân bổ mục tiêu theo kênh</span></div>
+        <div class="chart-box" id="chartAllocDonut"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title" style="margin:0;">Kế hoạch phân bổ đầu tư</span></div>
+      <div id="allocWarn"></div>
+      <div class="table-scroll"><table class="dt" id="investTable"></table></div>
+    </div>
+  </section>
+
+  <!-- ================= TÀI SẢN ================= -->
+  <section data-tab="assets" hidden>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title" style="margin:0;">Thêm tài sản</span></div>
+      <form class="form-grid asset" id="assetForm">
+        <div class="field"><label for="asType">Loại</label><select id="asType"></select></div>
+        <div class="field"><label for="asName">Tên / Nơi lưu trữ</label><input type="text" id="asName" placeholder="VD: Vietcombank" required></div>
+        <div class="field"><label for="asBal">Số dư (VNĐ)</label><input type="number" id="asBal" min="0" step="1000" required></div>
+        <div class="field"><label for="asNote">Ghi chú</label><input type="text" id="asNote"></div>
+        <button type="submit" class="btn btn-primary">+ Thêm</button>
+      </form>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);" id="assetsKpi"></div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title" style="margin:0;">Danh sách tài sản</span></div>
+        <div class="table-scroll"><table class="dt" id="assetsTable"></table></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title" style="margin:0;">Cơ cấu tài sản theo loại</span></div>
+        <div class="chart-box" id="chartAssetDonut"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="section-divider">
+        <span class="panel-title">Lịch sử tổng tài sản theo tháng</span>
+        <button class="btn btn-secondary" id="btnSnapshot">Lưu snapshot tháng này</button>
+      </div>
+      <div class="chart-box" id="chartNetWorth" style="margin-top:12px;"></div>
+      <div class="table-scroll" style="margin-top:10px;"><table class="dt" id="snapTable"></table></div>
+    </div>
+  </section>
+
+  <div class="footer-note" id="footerNote">Sổ Tài Chính · nguồn: Google Sheet "Sổ Quản Lý Tài Chính Cá Nhân"</div>
+</main>
+<div class="ctooltip" id="ctooltip"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ================= CONFIG ================= */
+var T_INCOME="Thu nhập", T_EXPENSE="Chi tiêu", T_INVEST="Đầu tư";
+var INCOME_CATS=["Lương","Thưởng","Thu Nhập Phụ / Freelance","Thu Nhập Khác"];
+var EXPENSE_CATS=["Nhà Ở / Thuê Nhà","Điện & Nước","Internet & Điện Thoại","Đi Chợ / Thực Phẩm","Đi Lại / Xăng Xe","Ăn Uống Bên Ngoài","Giải Trí","Y Tế / Sức Khỏe","Mua Sắm","Giáo Dục","Bảo Hiểm","Trả Nợ / Vay","Dịch Vụ Đăng Ký (Thuê Bao)","Chi Phí Khác","Thể Thao"];
+var INVEST_CATS=["Quỹ Dự Phòng","Cổ Phiếu / ETF","Quỹ Tương Hỗ","Vàng","Tiền Điện Tử","Quỹ Hưu Trí","Quỹ Bất Động Sản","Đầu Tư Khác"];
+var ASSET_TYPES=["Tiền Mặt","Tiền Gửi Ngân Hàng","Ví Điện Tử","Chứng Chỉ Quỹ","Chứng Khoán","Vàng","Tài Sản Khác"];
+var MONTH_LABELS=["Th1","Th2","Th3","Th4","Th5","Th6","Th7","Th8","Th9","Th10","Th11","Th12"];
+var CAT_COLORS=["var(--s1)","var(--s2)","var(--s3)","var(--s4)","var(--s5)","var(--s6)"];
+
+function slug(s){
+  return s.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/đ/g,"d").replace(/Đ/g,"D")
+    .toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+}
+function fmtVND(n){ n = Math.round(n||0); return n.toLocaleString("en-US")+" ₫"; }
+function fmtVNDSigned(n){ n=Math.round(n||0); return (n<0?"-":"")+Math.abs(n).toLocaleString("en-US")+" ₫"; }
+function fmtPct(x){ if(x==null||!isFinite(x)) return "–"; return (x*100).toFixed(1)+"%"; }
+function todayISO(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+
+var today = new Date();
+var state = {
+  db:null, dbReady:false,
+  month: today.getMonth()+1, year: today.getFullYear(),
+  tx: [], budgets: {}, investChannels: [], assets: [], snapshots: [],
+  settings: { investTargetPct: 0.1, sheetWebhookUrl: "" },
+  activeTab: "dashboard", dbMode: "local"
+};
+var unsubs = [];
+
+/* ================= THEME ================= */
+var THEME_KEY = "sotc_theme_pref";
+var SUN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+var MOON='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.6A9 9 0 1 1 11.4 3a7 7 0 0 0 9.6 9.6z"/></svg>';
+function effTheme(){ var a=document.documentElement.getAttribute("data-theme"); if(a==="light"||a==="dark") return a; return (window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) ? "light":"dark"; }
+function renderThemeIcon(){ var b=document.getElementById("btnTheme"); if(!b) return; var e=effTheme(); b.innerHTML = e==="dark"?SUN:MOON; b.title = e==="dark" ? "Chuyển sang giao diện sáng":"Chuyển sang giao diện tối"; }
+function applyTheme(pref){ if(pref==="light"||pref==="dark") document.documentElement.setAttribute("data-theme",pref); else document.documentElement.removeAttribute("data-theme"); renderThemeIcon(); }
+function initTheme(){
+  var saved=null; try{ saved=localStorage.getItem(THEME_KEY);}catch(e){}
+  applyTheme(saved);
+  document.getElementById("btnTheme").addEventListener("click", function(){
+    var next = effTheme()==="dark" ? "light":"dark";
+    try{ localStorage.setItem(THEME_KEY,next); }catch(e){}
+    applyTheme(next); renderAll();
+  });
+}
+
+/* ================= TABS ================= */
+function initTabs(){
+  document.getElementById("tabbar").addEventListener("click", function(e){
+    var b=e.target.closest(".tabbtn"); if(!b) return;
+    setTab(b.getAttribute("data-tab"));
+    scrollToActiveTab();
+  });
+  document.getElementById("btnGotoTx").addEventListener("click", function(){ setTab("tx"); scrollToActiveTab(); });
+  setTab("dashboard");
+}
+function setTab(tab){
+  state.activeTab = tab;
+  document.querySelectorAll(".tabbtn").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-tab")===tab); });
+  document.querySelectorAll("section[data-tab]").forEach(function(s){ s.hidden = s.getAttribute("data-tab")!==tab; });
+  renderAll();
+}
+// Tab buttons don't move anything on their own (the sections just toggle
+// hidden/visible in place), which reads as "nothing happened" — so every
+// explicit tab click also smooth-scrolls the newly active section into view.
+function scrollToActiveTab(){
+  var target = document.querySelector('section[data-tab="'+state.activeTab+'"]');
+  if(!target) return;
+  requestAnimationFrame(function(){ target.scrollIntoView({behavior:"smooth", block:"start"}); });
+}
+
+/* ================= PERIOD PICKER ================= */
+function initPeriodPicker(){
+  var mSel=document.getElementById("pkMonth"), ySel=document.getElementById("pkYear");
+  mSel.innerHTML = MONTH_LABELS.map(function(l,i){ return '<option value="'+(i+1)+'">'+l+'</option>'; }).join("");
+  var years=[]; var base = today.getFullYear();
+  for(var y=base-2;y<=base+2;y++) years.push(y);
+  if(years.indexOf(state.year)===-1) years.push(state.year);
+  years.sort(function(a,b){return a-b;});
+  ySel.innerHTML = years.map(function(y){ return '<option value="'+y+'">'+y+'</option>'; }).join("");
+  mSel.value = state.month; ySel.value = state.year;
+  mSel.addEventListener("change", function(){ state.month=+mSel.value; renderAll(); });
+  ySel.addEventListener("change", function(){ state.year=+ySel.value; renderAll(); });
+}
+
+/* ================= LOCAL DB (fallback for offline / stand-alone file use) ================= */
+// Mirrors the small slice of the Artifact `db` capability's API this app uses,
+// backed by localStorage so the app keeps working — and keeps saving — when
+// opened as a plain .html file with no Claude runtime behind it.
+function makeLocalDB(){
+  var KEY="sotc_local_db_v1";
+  function readStore(){ try{ var raw=localStorage.getItem(KEY); return raw?JSON.parse(raw):{}; }catch(e){ return {}; } }
+  function writeStore(store){ try{ localStorage.setItem(KEY, JSON.stringify(store)); }catch(e){} try{ window.dispatchEvent(new CustomEvent("localdb:change")); }catch(e){} }
+  function genId(){ return "id"+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+  function watch(fire){
+    fire();
+    window.addEventListener("localdb:change", fire);
+    window.addEventListener("storage", fire);
+    return function(){ window.removeEventListener("localdb:change",fire); window.removeEventListener("storage",fire); };
+  }
+  function docRef(col,id){
+    return {
+      id:id,
+      get:function(){ var d=(readStore()[col]||{})[id]; return Promise.resolve({id:id, exists:!!d, data:function(){return d;}}); },
+      set:function(data){ var s=readStore(); s[col]=s[col]||{}; s[col][id]=data; writeStore(s); return Promise.resolve(); },
+      update:function(data){ var s=readStore(); s[col]=s[col]||{}; s[col][id]=Object.assign({}, s[col][id]||{}, data); writeStore(s); return Promise.resolve(); },
+      delete:function(){ var s=readStore(); if(s[col]) delete s[col][id]; writeStore(s); return Promise.resolve(); },
+      onSnapshot:function(next){ return watch(function(){ var d=(readStore()[col]||{})[id]; next({id:id, exists:!!d, data:function(){return d;}}); }); }
+    };
+  }
+  function collection(col){
+    return {
+      doc:function(id){ return docRef(col, id||genId()); },
+      add:function(data){ var id=genId(); var s=readStore(); s[col]=s[col]||{}; s[col][id]=data; writeStore(s); return Promise.resolve(docRef(col,id)); },
+      onSnapshot:function(next){ return watch(function(){ var c=readStore()[col]||{}; next({docs:Object.keys(c).map(function(id){ return {id:id, exists:true, data:function(){return c[id];}}; })}); }); }
+    };
+  }
+  return {
+    collection: collection,
+    doc: function(path){ var parts=path.split("/"); var id=parts.pop(); return docRef(parts.join("/"), id); },
+    exportAll: function(){ return readStore(); },
+    importAll: function(obj){ writeStore(obj||{}); },
+    isEmpty: function(){ var s=readStore(); return Object.keys(s).length===0; },
+    seed: function(writes){
+      var s=readStore();
+      writes.forEach(function(w){ s[w.collection]=s[w.collection]||{}; s[w.collection][w.doc_id]=w.data; });
+      writeStore(s);
+    }
+  };
+}
+// The user's real data at the time this file was generated — used only to give
+// a stand-alone copy of this app something real to start from (mirrors the
+// Google Sheet "Sổ Quản Lý Tài Chính Cá Nhân"), never re-applied once the
+// local store already holds anything.
+var SEED_WRITES = [{"collection": "budgets", "doc_id": "nha-o-thue-nha", "data": {"name": "Nhà Ở / Thuê Nhà", "monthlyBudget": 6000000}}, {"collection": "budgets", "doc_id": "dien-nuoc", "data": {"name": "Điện & Nước", "monthlyBudget": 500000}}, {"collection": "budgets", "doc_id": "internet-dien-thoai", "data": {"name": "Internet & Điện Thoại", "monthlyBudget": 150000}}, {"collection": "budgets", "doc_id": "di-cho-thuc-pham", "data": {"name": "Đi Chợ / Thực Phẩm", "monthlyBudget": 0}}, {"collection": "budgets", "doc_id": "di-lai-xang-xe", "data": {"name": "Đi Lại / Xăng Xe", "monthlyBudget": 280000}}, {"collection": "budgets", "doc_id": "an-uong-ben-ngoai", "data": {"name": "Ăn Uống Bên Ngoài", "monthlyBudget": 1500000}}, {"collection": "budgets", "doc_id": "giai-tri", "data": {"name": "Giải Trí", "monthlyBudget": 800000}}, {"collection": "budgets", "doc_id": "y-te-suc-khoe", "data": {"name": "Y Tế / Sức Khỏe", "monthlyBudget": 500000}}, {"collection": "budgets", "doc_id": "mua-sam", "data": {"name": "Mua Sắm", "monthlyBudget": 1000000}}, {"collection": "budgets", "doc_id": "giao-duc", "data": {"name": "Giáo Dục", "monthlyBudget": 0}}, {"collection": "budgets", "doc_id": "bao-hiem", "data": {"name": "Bảo Hiểm", "monthlyBudget": 0}}, {"collection": "budgets", "doc_id": "tra-no-vay", "data": {"name": "Trả Nợ / Vay", "monthlyBudget": 0}}, {"collection": "budgets", "doc_id": "dich-vu-dang-ky-thue-bao", "data": {"name": "Dịch Vụ Đăng Ký (Thuê Bao)", "monthlyBudget": 300000}}, {"collection": "budgets", "doc_id": "chi-phi-khac", "data": {"name": "Chi Phí Khác", "monthlyBudget": 500000}}, {"collection": "budgets", "doc_id": "the-thao", "data": {"name": "Thể Thao", "monthlyBudget": 0}}, {"collection": "investChannels", "doc_id": "quy-du-phong", "data": {"name": "Quỹ Dự Phòng", "allocPct": 0.2, "note": "Đủ 3-6 tháng chi tiêu, giữ ở dạng thanh khoản cao", "order": 0}}, {"collection": "investChannels", "doc_id": "co-phieu-etf", "data": {"name": "Cổ Phiếu / ETF", "allocPct": 0.3, "note": "Tăng trưởng dài hạn", "order": 1}}, {"collection": "investChannels", "doc_id": "quy-tuong-ho", "data": {"name": "Quỹ Tương Hỗ", "allocPct": 0.15, "note": "Đa dạng hóa, có chuyên gia quản lý", "order": 2}}, {"collection": "investChannels", "doc_id": "vang", "data": {"name": "Vàng", "allocPct": 0.1, "note": "Phòng ngừa lạm phát", "order": 3}}, {"collection": "investChannels", "doc_id": "tien-dien-tu", "data": {"name": "Tiền Điện Tử", "allocPct": 0.05, "note": "Rủi ro cao — chỉ nên phân bổ tỷ lệ nhỏ", "order": 4}}, {"collection": "investChannels", "doc_id": "quy-huu-tri", "data": {"name": "Quỹ Hưu Trí", "allocPct": 0.15, "note": "Dài hạn, có thể có ưu đãi thuế", "order": 5}}, {"collection": "investChannels", "doc_id": "quy-bat-dong-san", "data": {"name": "Quỹ Bất Động Sản", "allocPct": 0, "note": "Quỹ REIT hoặc quỹ bất động sản", "order": 6}}, {"collection": "investChannels", "doc_id": "dau-tu-khac", "data": {"name": "Đầu Tư Khác", "allocPct": 0.05, "note": "", "order": 7}}, {"collection": "settings", "doc_id": "app", "data": {"investTargetPct": 0.1}}, {"collection": "assets", "doc_id": "a1", "data": {"type": "Tiền Mặt", "name": "Tiền mặt tại nhà", "balance": 550000, "note": ""}}, {"collection": "assets", "doc_id": "a2", "data": {"type": "Tiền Gửi Ngân Hàng", "name": "Vietcombank", "balance": 393895892, "note": ""}}, {"collection": "assets", "doc_id": "a3", "data": {"type": "Tài Sản Khác", "name": "Túi thần tài", "balance": 63239737, "note": ""}}, {"collection": "assets", "doc_id": "a4", "data": {"type": "Ví Điện Tử", "name": "Momo", "balance": 692980, "note": ""}}, {"collection": "assets", "doc_id": "a5", "data": {"type": "Ví Điện Tử", "name": "ZaloPay", "balance": 0, "note": ""}}, {"collection": "assets", "doc_id": "a6", "data": {"type": "Chứng Chỉ Quỹ", "name": "VESAF, DCDS...", "balance": 21346119, "note": ""}}, {"collection": "assets", "doc_id": "a7", "data": {"type": "Chứng Khoán", "name": "Tài khoản chứng khoán (VPS, SSI...)", "balance": 9650895, "note": ""}}, {"collection": "assets", "doc_id": "a8", "data": {"type": "Vàng", "name": "Vàng (quy đổi VNĐ)", "balance": 13000000, "note": ""}}, {"collection": "assets", "doc_id": "a9", "data": {"type": "Tài Sản Khác", "name": "Tiết kiệm ngân hàng", "balance": 100000000, "note": ""}}, {"collection": "assetSnapshots", "doc_id": "s1", "data": {"month": 9, "year": 2026, "total": 602375623, "note": "Nhập từ Google Sheet"}}, {"collection": "tx", "doc_id": "t1", "data": {"date": "2026-09-01", "type": "Thu nhập", "category": "Lương", "note": "Lương tháng 9", "amount": 13000000}}, {"collection": "tx", "doc_id": "t2", "data": {"date": "2026-09-02", "type": "Chi tiêu", "category": "Ăn Uống Bên Ngoài", "note": "Ăn tối với bạn bè", "amount": 800000}}, {"collection": "tx", "doc_id": "t3", "data": {"date": "2026-09-03", "type": "Chi tiêu", "category": "Đầu Tư Khác", "note": "Mua Claude Pro", "amount": 5785317}}, {"collection": "tx", "doc_id": "t4", "data": {"date": "2026-09-09", "type": "Chi tiêu", "category": "Thể Thao", "note": "Đá banh", "amount": 40000}}, {"collection": "tx", "doc_id": "t5", "data": {"date": "2026-09-16", "type": "Chi tiêu", "category": "Đi Lại / Xăng Xe", "note": "Grab + đổ xăng", "amount": 70000}}, {"collection": "tx", "doc_id": "t6", "data": {"date": "2026-09-11", "type": "Chi tiêu", "category": "Thể Thao", "note": "Cầu lông", "amount": 40000}}, {"collection": "tx", "doc_id": "t7", "data": {"date": "2026-09-10", "type": "Chi tiêu", "category": "Ăn Uống Bên Ngoài", "note": "Cơm", "amount": 45000}}, {"collection": "tx", "doc_id": "t8", "data": {"date": "2026-09-11", "type": "Chi tiêu", "category": "Internet & Điện Thoại", "note": "4G", "amount": 146000}}, {"collection": "tx", "doc_id": "t9", "data": {"date": "2026-09-12", "type": "Chi tiêu", "category": "Ăn Uống Bên Ngoài", "note": "Cà phê Tous Les Jour", "amount": 55000}}, {"collection": "tx", "doc_id": "t10", "data": {"date": "2026-09-12", "type": "Chi tiêu", "category": "Nhà Ở / Thuê Nhà", "note": "", "amount": 6000000}}, {"collection": "tx", "doc_id": "t11", "data": {"date": "2026-09-12", "type": "Chi tiêu", "category": "Ăn Uống Bên Ngoài", "note": "Tiền ăn sáng", "amount": 259000}}, {"collection": "tx", "doc_id": "t12", "data": {"date": "2026-09-12", "type": "Đầu tư", "category": "Cổ Phiếu / ETF", "note": "Chứng khoán Vin", "amount": 1948346}}, {"collection": "tx", "doc_id": "t13", "data": {"date": "2026-09-14", "type": "Chi tiêu", "category": "Ăn Uống Bên Ngoài", "note": "Cơm", "amount": 57000}}, {"collection": "tx", "doc_id": "t14", "data": {"date": "2026-09-15", "type": "Chi tiêu", "category": "Ăn Uống Bên Ngoài", "note": "Cơm", "amount": 52000}}, {"collection": "tx", "doc_id": "t15", "data": {"date": "2026-09-15", "type": "Chi tiêu", "category": "Ăn Uống Bên Ngoài", "note": "Cơm", "amount": 60000}}];
+
+/* ================= DB INIT ================= */
+function setDbChip(status){
+  var chip=document.getElementById("dbChip"), txt=document.getElementById("dbChipTxt");
+  chip.className = "dbchip " + (status==="on"?"on":status==="local"?"local":status==="off"?"off":"");
+  txt.textContent = status==="on" ? "Đã đồng bộ" : status==="local" ? "Lưu trên máy này" : status==="off" ? "Không lưu được" : "Đang kết nối…";
+}
+function updateModeCopy(mode){
+  var hint=document.getElementById("syncHintTxt");
+  var footer=document.getElementById("footerNote");
+  var bridgePanel=document.getElementById("sheetBridgePanel");
+  if(bridgePanel) bridgePanel.hidden = mode!=="local";
+  if(mode==="cloud"){
+    hint.innerHTML = 'Web app này lưu giao dịch riêng, không tự động kéo dữ liệu mới từ Google Sheet. Muốn nạp thêm giao dịch cũ hoặc dữ liệu vừa cập nhật trong Sheet, nhắn Claude: <code>đồng bộ giao dịch từ Google Sheet vào web app</code>. (Đồng bộ tự động 2 chiều chỉ khả dụng ở bản file .html chạy trực tiếp trên trình duyệt.)';
+    footer.textContent = 'Sổ Tài Chính · dữ liệu lưu trực tuyến, riêng tư cho bạn · nguồn: Google Sheet "Sổ Quản Lý Tài Chính Cá Nhân"';
+  } else {
+    hint.innerHTML = 'Đây là bản chạy trực tiếp trong trình duyệt này — dữ liệu lưu ngay trên máy bạn (localStorage), không đồng bộ sang thiết bị khác. Bấm <b>Xuất dữ liệu</b> để sao lưu ra file .csv, hoặc <b>Nhập dữ liệu</b> để nạp lại. Có thể bật đồng bộ tự động sang Google Sheet ở khung bên dưới.';
+    footer.textContent = 'Sổ Tài Chính · dữ liệu lưu ngay trên trình duyệt này · nguồn: Google Sheet "Sổ Quản Lý Tài Chính Cá Nhân"';
+  }
+}
+async function initDB(){
+  var db=null, mode="local";
+  if(window.claude && window.claude.use){
+    try{ db = await window.claude.use("db"); }catch(e){ db=null; }
+  }
+  if(db){ mode="cloud"; }
+  else{ db = makeLocalDB(); if(db.isEmpty()) db.seed(SEED_WRITES); }
+
+  state.db = db; state.dbReady = true; state.dbMode = mode;
+  setDbChip(mode==="cloud"?"on":"local");
+  updateModeCopy(mode);
+
+  unsubs.push(db.collection("tx").onSnapshot(function(snap){
+    state.tx = snap.docs.map(function(d){ var v=d.data()||{}; v._id=d.id; return v; });
+    renderAll();
+  }, function(){ setDbChip("off"); }));
+
+  unsubs.push(db.collection("budgets").onSnapshot(function(snap){
+    var m={}; snap.docs.forEach(function(d){ m[d.id]=d.data()||{}; });
+    state.budgets=m; renderAll();
+  }));
+
+  unsubs.push(db.collection("investChannels").onSnapshot(function(snap){
+    state.investChannels = snap.docs.map(function(d){ var v=d.data()||{}; v._id=d.id; return v; })
+      .sort(function(a,b){ return (a.order||0)-(b.order||0); });
+    renderAll();
+  }));
+
+  unsubs.push(db.collection("assets").onSnapshot(function(snap){
+    state.assets = snap.docs.map(function(d){ var v=d.data()||{}; v._id=d.id; return v; });
+    renderAll();
+  }));
+
+  unsubs.push(db.collection("assetSnapshots").onSnapshot(function(snap){
+    state.snapshots = snap.docs.map(function(d){ var v=d.data()||{}; v._id=d.id; return v; })
+      .sort(function(a,b){ return (a.year-b.year)||(a.month-b.month); });
+    renderAll();
+  }));
+
+  unsubs.push(db.doc("settings/app").onSnapshot(function(snap){
+    if(snap.exists){
+      var v=snap.data()||{};
+      if(typeof v.investTargetPct==="number") state.settings.investTargetPct=v.investTargetPct;
+      if(typeof v.sheetWebhookUrl==="string"){
+        state.settings.sheetWebhookUrl=v.sheetWebhookUrl;
+        var urlInp=document.getElementById("sheetUrl");
+        if(urlInp && document.activeElement!==urlInp) urlInp.value=v.sheetWebhookUrl;
+      }
+    }
+    renderAll();
+  }));
+}
+
+/* ================= BACKUP: export / import (.csv — no external library needed) ================= */
+// A single CSV file, opens fine in Excel/Google Sheets/Numbers, split into
+// sections (one per data type) marked with a "### TÊN" header row. Chosen
+// over .xlsx specifically so this never depends on an external script
+// loading successfully, and over .json because the user asked for something
+// they can actually open and edit directly.
+function csvField(v){
+  var s = v==null ? "" : String(v);
+  if(/[",\n]/.test(s)) s = '"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+function csvRow(arr){ return arr.map(csvField).join(","); }
+function buildBackupCSV(){
+  var lines = [];
+  lines.push("### GIAO DỊCH");
+  lines.push(csvRow(["Ngày","Loại","Danh Mục","Diễn Giải","Số Tiền (VNĐ)"]));
+  state.tx.slice().sort(function(a,b){return (a.date||"").localeCompare(b.date||"");}).forEach(function(t){
+    lines.push(csvRow([t.date,t.type,t.category,t.note||"",Math.round(+t.amount||0)]));
+  });
+  lines.push("");
+  lines.push("### NGÂN SÁCH");
+  lines.push(csvRow(["Danh Mục","Ngân Sách Tháng (VNĐ)"]));
+  EXPENSE_CATS.forEach(function(c){ lines.push(csvRow([c, budgetFor(c)])); });
+  lines.push("");
+  lines.push("### ĐẦU TƯ (kênh phân bổ)");
+  lines.push(csvRow(["Kênh","Tỷ Lệ Phân Bổ (%)","Ghi Chú"]));
+  INVEST_CATS.forEach(function(ch){
+    var c = state.investChannels.find(function(x){return x.name===ch;}) || {};
+    lines.push(csvRow([ch, Math.round((c.allocPct||0)*100), c.note||""]));
+  });
+  lines.push("");
+  lines.push("### TÀI SẢN");
+  lines.push(csvRow(["Loại","Tên","Số Dư (VNĐ)","Ghi Chú"]));
+  state.assets.forEach(function(a){ lines.push(csvRow([a.type,a.name,Math.round(+a.balance||0),a.note||""])); });
+  lines.push("");
+  lines.push("### LỊCH SỬ TỔNG TÀI SẢN");
+  lines.push(csvRow(["Tháng","Năm","Tổng Tài Sản (VNĐ)","Ghi Chú"]));
+  state.snapshots.forEach(function(s){ lines.push(csvRow([s.month,s.year,Math.round(+s.total||0),s.note||""])); });
+  lines.push("");
+  lines.push("### CÀI ĐẶT");
+  lines.push(csvRow(["Tỷ Lệ Đầu Tư Đề Xuất (%)","URL Đồng Bộ Google Sheet"]));
+  lines.push(csvRow([Math.round((state.settings.investTargetPct||0)*100), state.settings.sheetWebhookUrl||""]));
+  return lines.join("\r\n");
+}
+// Minimal but correct CSV parser: handles quoted fields with embedded
+// commas, quotes ("") and newlines — a plain split(",") would break on any
+// "Diễn Giải" note containing a comma.
+function parseCSVText(text){
+  var rows=[], row=[], field="", inQuotes=false;
+  for(var i=0;i<text.length;i++){
+    var c=text[i];
+    if(inQuotes){
+      if(c==='"'){
+        if(text[i+1]==='"'){ field+='"'; i++; } else { inQuotes=false; }
+      } else field+=c;
+    } else {
+      if(c==='"') inQuotes=true;
+      else if(c===','){ row.push(field); field=""; }
+      else if(c==='\r'){ /* skip, \n handles the break */ }
+      else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=""; }
+      else field+=c;
+    }
+  }
+  row.push(field); rows.push(row);
+  while(rows.length && rows[rows.length-1].length===1 && rows[rows.length-1][0]==="") rows.pop();
+  return rows;
+}
+function parseBackupCSV(text){
+  var rows = parseCSVText(text.replace(/^﻿/,""));
+  var sections = {}; var current = null;
+  rows.forEach(function(r){
+    var first = (r[0]||"").trim();
+    if(first.indexOf("###")===0){ current = first.replace(/^###\s*/,""); sections[current]=[]; return; }
+    if(current==null) return;
+    if(r.length===1 && r[0]==="") return;
+    sections[current].push(r);
+  });
+  function section(name){ return sections[name]||[]; }
+  var data = { tx:[], budgets:{}, investChannels:[], assets:[], snapshots:[], settings:{} };
+  section("GIAO DỊCH").slice(1).forEach(function(r){
+    if(!r[0]) return;
+    data.tx.push({date:r[0],type:r[1],category:r[2],note:r[3]||"",amount:+r[4]||0});
+  });
+  section("NGÂN SÁCH").slice(1).forEach(function(r){
+    if(!r[0]) return;
+    data.budgets[slug(r[0])] = {name:r[0], monthlyBudget:+r[1]||0};
+  });
+  section("ĐẦU TƯ (kênh phân bổ)").slice(1).forEach(function(r){
+    if(!r[0]) return;
+    data.investChannels.push({name:r[0], allocPct:(+r[1]||0)/100, note:r[2]||"", order:INVEST_CATS.indexOf(r[0])});
+  });
+  section("TÀI SẢN").slice(1).forEach(function(r){
+    if(!r[1]) return;
+    data.assets.push({type:r[0],name:r[1],balance:+r[2]||0,note:r[3]||""});
+  });
+  section("LỊCH SỬ TỔNG TÀI SẢN").slice(1).forEach(function(r){
+    if(!r[0]) return;
+    data.snapshots.push({month:+r[0]||1,year:+r[1]||today.getFullYear(),total:+r[2]||0,note:r[3]||""});
+  });
+  var settingsRow = section("CÀI ĐẶT")[1];
+  if(settingsRow){ data.settings = { investTargetPct:(+settingsRow[0]||10)/100, sheetWebhookUrl: settingsRow[1]||"" }; }
+  return data;
+}
+async function applyImportedData(data){
+  var writes = [];
+  data.tx.forEach(function(t){ writes.push({collection:"tx",doc_id:"id"+Math.random().toString(36).slice(2,10),data:t}); });
+  Object.keys(data.budgets).forEach(function(k){ writes.push({collection:"budgets",doc_id:k,data:data.budgets[k]}); });
+  data.investChannels.forEach(function(c){ writes.push({collection:"investChannels",doc_id:slug(c.name),data:c}); });
+  data.assets.forEach(function(a){ writes.push({collection:"assets",doc_id:"id"+Math.random().toString(36).slice(2,10),data:a}); });
+  data.snapshots.forEach(function(s){ writes.push({collection:"assetSnapshots",doc_id:"id"+Math.random().toString(36).slice(2,10),data:s}); });
+  if(data.settings && Object.keys(data.settings).length) writes.push({collection:"settings",doc_id:"app",data:data.settings});
+  if(state.db && state.db.seed){ state.db.importAll({}); state.db.seed(writes); }
+  else if(state.db){ for(var i=0;i<writes.length;i++){ try{ await state.db.collection(writes[i].collection).doc(writes[i].doc_id).set(writes[i].data); }catch(err){} } }
+}
+async function saveFile(filename, text, mime){
+  // Inside the hosted Artifact page a plain <a download> does nothing — offer
+  // the file through the `downloads` capability there; a stand-alone .html
+  // file opened straight in a browser has no window.claude, so it falls
+  // through to a normal blob download, which works everywhere.
+  if(window.claude && window.claude.use){
+    try{
+      var dl = await window.claude.use("downloads");
+      if(dl){ await dl.save({filename:filename, data:new Blob([text],{type:mime})}); return; }
+    }catch(e){ /* fall through to blob download below */ }
+  }
+  var blob = new Blob([text], {type:mime});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+}
+function initBackup(){
+  document.getElementById("btnExport").addEventListener("click", async function(){
+    var csv = "﻿"+buildBackupCSV(); // BOM so Excel opens Vietnamese diacritics correctly
+    var d = new Date(); var stamp = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    await saveFile("so-tai-chinh-sao-luu-"+stamp+".csv", csv, "text/csv;charset=utf-8");
+  });
+  document.getElementById("btnImport").addEventListener("click", function(){ document.getElementById("fileImport").click(); });
+  document.getElementById("fileImport").addEventListener("change", function(e){
+    var file = e.target.files[0]; if(!file) return;
+    var reader = new FileReader();
+    reader.onload = async function(){
+      var data;
+      var isJson = /\.json$/i.test(file.name);
+      try{
+        if(isJson){
+          var raw = JSON.parse(reader.result);
+          data = { tx:raw.tx||[], budgets:raw.budgets||{}, investChannels:raw.investChannels||[], assets:raw.assets||[], snapshots:raw.snapshots||[], settings:raw.settings||{} };
+        } else {
+          data = parseBackupCSV(reader.result);
+        }
+      }catch(err){ alert("File không đúng định dạng sao lưu (.csv)."); return; }
+      if(!confirm("Nạp bản sao lưu này sẽ THAY THẾ toàn bộ dữ liệu hiện có. Tiếp tục?")) return;
+      await applyImportedData(data);
+      document.getElementById("fileImport").value="";
+    };
+    reader.readAsText(file);
+  });
+}
+
+/* ================= SHEETS BRIDGE (local/standalone mode only — Apps Script Web App) ================= */
+function setSheetStatus(msg, kind){
+  var p=document.getElementById("sheetBridgeStatus"); if(!p) return;
+  p.textContent = msg;
+  p.style.color = kind==="ok" ? "var(--good)" : kind==="warn" ? "var(--critical)" : "var(--text-faint)";
+}
+async function saveSheetWebhookUrl(url){
+  state.settings.sheetWebhookUrl = url;
+  if(state.db){
+    try{
+      var current = {};
+      try{ var snap = await state.db.doc("settings/app").get(); if(snap.exists) current = snap.data()||{}; }catch(e){}
+      await state.db.doc("settings/app").set(Object.assign({}, current, state.settings));
+    }catch(e){}
+  }
+}
+function initSheetBridge(){
+  var urlInp=document.getElementById("sheetUrl");
+  if(!urlInp) return;
+  document.getElementById("btnSheetSave").addEventListener("click", async function(){
+    var url = urlInp.value.trim();
+    await saveSheetWebhookUrl(url);
+    setSheetStatus(url ? "Đã lưu. Giao dịch mới sẽ tự động gửi sang Google Sheet." : "Đã tắt đồng bộ tự động.", url?"ok":"");
+  });
+  document.getElementById("btnSheetTest").addEventListener("click", async function(){
+    var url = urlInp.value.trim();
+    if(!url){ setSheetStatus("Nhập URL Web App trước đã.", "warn"); return; }
+    setSheetStatus("Đang kiểm tra…", "");
+    try{
+      var res = await fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"ping"})});
+      var txt = await res.text();
+      var ok=false; try{ ok = JSON.parse(txt).status==="ok"; }catch(e){}
+      setSheetStatus(ok ? "Kết nối thành công! Giao dịch mới sẽ tự động ghi vào Sheet. ✓" : "Đã gửi được yêu cầu nhưng không đọc được phản hồi — kiểm tra thử trong Google Sheet xem có dòng mới không.", ok?"ok":"warn");
+    }catch(e){ setSheetStatus("Không kết nối được — kiểm tra lại URL và bước triển khai (Anyone can access) của Web App.", "warn"); }
+  });
+}
+function pushToSheet(tx){
+  var url = state.settings.sheetWebhookUrl;
+  if(!url) return;
+  fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(tx)}).catch(function(){ /* best-effort; Apps Script CORS responses are often opaque */ });
+}
+
+/* ================= DATA HELPERS ================= */
+function txMonth(t){ var p=(t.date||"").split("-"); return +p[1]; }
+function txYear(t){ var p=(t.date||"").split("-"); return +p[0]; }
+function sumTx(list, type, month, year, cat){
+  var s=0;
+  list.forEach(function(t){
+    if(type && t.type!==type) return;
+    if(month!=null && txMonth(t)!==month) return;
+    if(year!=null && txYear(t)!==year) return;
+    if(cat && t.category!==cat) return;
+    s += (+t.amount||0);
+  });
+  return s;
+}
+function budgetFor(catName){ var b=state.budgets[slug(catName)]; return b && typeof b.monthlyBudget==="number" ? b.monthlyBudget : 0; }
+function totalMonthlyBudget(){ var s=0; EXPENSE_CATS.forEach(function(c){ s+=budgetFor(c); }); return s; }
+function allocPctFor(chName){ var c=state.investChannels.find(function(x){ return x.name===chName; }); return c && typeof c.allocPct==="number" ? c.allocPct : 0; }
+
+/* ================= RENDER: KPI (dashboard) ================= */
+function renderDashKpi(){
+  var m=state.month, y=state.year;
+  var income=sumTx(state.tx,T_INCOME,m,y), expense=sumTx(state.tx,T_EXPENSE,m,y), invest=sumTx(state.tx,T_INVEST,m,y);
+  var balance = income-expense;
+  var investRate = income>0 ? invest/income : null;
+  var afterInvest = balance-invest;
+  var tiles=[
+    ["Tổng thu nhập", fmtVND(income), ""],
+    ["Tổng chi tiêu", fmtVND(expense), ""],
+    ["Đã đầu tư", fmtVND(invest), ""],
+    ["Số dư (Thu − Chi)", fmtVNDSigned(balance), balance<0?"neg":"pos"],
+    ["Tỷ lệ đầu tư / thu nhập", fmtPct(investRate), ""],
+    ["Còn lại sau đầu tư", fmtVNDSigned(afterInvest), afterInvest<0?"neg":"pos"]
+  ];
+  document.getElementById("dashKpi").innerHTML = tiles.map(function(t){
+    return '<div class="kpi"><span class="l">'+t[0]+'</span><span class="v '+t[2]+' tnum">'+t[1]+'</span></div>';
+  }).join("");
+
+  var overs = EXPENSE_CATS.filter(function(c){ var b=budgetFor(c); var a=sumTx(state.tx,T_EXPENSE,m,y,c); return b>0 && a>b; });
+  var banner;
+  if(overs.length===0){
+    banner='<div class="banner ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L20 7"/></svg>Không có danh mục nào vượt ngân sách tháng '+m+'/'+y+'.</div>';
+  } else {
+    banner='<div class="banner warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>Có '+overs.length+' danh mục vượt ngân sách tháng '+m+'/'+y+': '+esc(overs.join(", "))+' — xem tab Ngân Sách.</div>';
+  }
+  document.getElementById("dashBanner").innerHTML = banner;
+}
+
+/* ================= RENDER: SMART FEATURES ================= */
+// Dự báo cuối tháng — only meaningful for the real current month/year (a
+// past or future selected period has no "days elapsed" to project from).
+function renderForecast(){
+  var el=document.getElementById("dashForecast"); if(!el) return;
+  var now=new Date();
+  var isCurrent = state.month===now.getMonth()+1 && state.year===now.getFullYear();
+  if(!isCurrent){ el.innerHTML=""; return; }
+  var dayOfMonth=now.getDate();
+  var daysInMonth=new Date(state.year, state.month, 0).getDate();
+  var expenseSoFar=sumTx(state.tx,T_EXPENSE,state.month,state.year);
+  if(expenseSoFar<=0){ el.innerHTML=""; return; }
+  var forecast=expenseSoFar/dayOfMonth*daysInMonth;
+  var budget=totalMonthlyBudget();
+  var over = budget>0 && forecast>budget;
+  var msg='Dự báo chi tiêu cả tháng theo tốc độ hiện tại: khoảng <b class="tnum">'+fmtVND(forecast)+'</b> (đã chi '+fmtVND(expenseSoFar)+' trong '+dayOfMonth+'/'+daysInMonth+' ngày)';
+  msg += budget>0 ? (over ? ', có thể <b>vượt ngân sách</b> khoảng '+fmtVND(forecast-budget)+'.' : ', vẫn trong ngân sách tổng ('+fmtVND(budget)+').') : '.';
+  el.innerHTML='<div class="banner '+(over?"warn":"ok")+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M7 15l4-4 3 3 5-6"/></svg><span>'+msg+'</span></div>';
+}
+// Điểm sức khỏe tài chính — composite score from savings rate, budget
+// adherence and investment rate for the currently selected period.
+function computeHealthScore(){
+  var m=state.month,y=state.year;
+  var income=sumTx(state.tx,T_INCOME,m,y), expense=sumTx(state.tx,T_EXPENSE,m,y), invest=sumTx(state.tx,T_INVEST,m,y);
+  var savingsRate = income>0 ? (income-expense)/income : null;
+  var savingsScore = savingsRate==null ? null : Math.max(0,Math.min(100,(savingsRate/0.2)*100));
+  var withBudget = EXPENSE_CATS.filter(function(c){ return budgetFor(c)>0; });
+  var withinBudget = withBudget.filter(function(c){ return sumTx(state.tx,T_EXPENSE,m,y,c)<=budgetFor(c); });
+  var budgetScore = withBudget.length>0 ? (withinBudget.length/withBudget.length)*100 : null;
+  var investRate = income>0 ? invest/income : null;
+  var targetPct = state.settings.investTargetPct||0.1;
+  var investScore = investRate==null ? null : Math.max(0,Math.min(100,(investRate/targetPct)*100));
+  var weights={savings:0.4,budget:0.3,invest:0.3}, totalW=0, sum=0;
+  if(savingsScore!=null){ sum+=savingsScore*weights.savings; totalW+=weights.savings; }
+  if(budgetScore!=null){ sum+=budgetScore*weights.budget; totalW+=weights.budget; }
+  if(investScore!=null){ sum+=investScore*weights.invest; totalW+=weights.invest; }
+  return {
+    score: totalW>0 ? Math.round(sum/totalW) : null,
+    savingsScore:savingsScore, budgetScore:budgetScore, investScore:investScore,
+    savingsRate:savingsRate, investRate:investRate
+  };
+}
+function healthMeterRow(name, val){
+  if(val==null) return '<div class="meter-row"><div class="meter-top"><span class="meter-name">'+name+'</span><span class="meter-tag flat">chưa đủ dữ liệu</span></div></div>';
+  var st = val>=80?"good":val>=50?"warning":"critical";
+  var color = st==="good"?"var(--good)":st==="warning"?"var(--warning)":"var(--critical)";
+  return '<div class="meter-row"><div class="meter-top"><span class="meter-name">'+name+'</span><span class="meter-nums tnum">'+Math.round(val)+'/100</span></div>'+
+    '<div class="meter-track"><div class="meter-fill" style="width:'+Math.max(0,Math.min(100,val))+'%;background:'+color+';"></div></div></div>';
+}
+function renderHealthScore(){
+  var el=document.getElementById("healthScore"); if(!el) return;
+  var h=computeHealthScore();
+  if(h.score==null){ el.innerHTML='<div class="chart-empty">Chưa đủ dữ liệu tháng này để tính điểm — thêm giao dịch thu nhập/chi tiêu để bắt đầu.</div>'; return; }
+  var label,cls;
+  if(h.score>=80){label="Rất tốt";cls="good";} else if(h.score>=60){label="Tốt";cls="good";} else if(h.score>=40){label="Cần cải thiện";cls="warning";} else {label="Đáng lo ngại";cls="critical";}
+  var color = cls==="good"?"var(--good)":cls==="warning"?"var(--warning)":"var(--critical)";
+  el.innerHTML =
+    '<div style="display:flex;align-items:center;gap:22px;flex-wrap:wrap;">'+
+      '<div style="text-align:center;min-width:90px;">'+
+        '<div class="tnum" style="font-family:var(--font-display);font-size:42px;font-weight:700;color:'+color+';line-height:1;">'+h.score+'</div>'+
+        '<div class="meter-tag '+cls+'" style="margin-top:7px;display:inline-block;">'+label+'</div>'+
+      '</div>'+
+      '<div style="flex:1;min-width:240px;">'+
+        healthMeterRow("Tỷ lệ tiết kiệm ("+(h.savingsRate!=null?fmtPct(h.savingsRate):"–")+")", h.savingsScore)+
+        healthMeterRow("Tuân thủ ngân sách", h.budgetScore)+
+        healthMeterRow("Tỷ lệ đầu tư ("+(h.investRate!=null?fmtPct(h.investRate):"–")+")", h.investScore)+
+      '</div>'+
+    '</div>';
+}
+// So sánh tháng này vs tháng trước — per-category % change (Budget tab).
+function renderMonthCompare(){
+  var el=document.getElementById("monthCompare"); if(!el) return;
+  var m=state.month,y=state.year;
+  var pm=m-1, py=y; if(pm<1){ pm=12; py=y-1; }
+  var rows = EXPENSE_CATS.map(function(c){
+    var cur=sumTx(state.tx,T_EXPENSE,m,y,c), prev=sumTx(state.tx,T_EXPENSE,pm,py,c);
+    var diff=cur-prev;
+    var pct = prev>0 ? diff/prev : (cur>0?null:0);
+    return {cat:c,cur:cur,prev:prev,diff:diff,pct:pct};
+  }).filter(function(r){ return r.cur>0||r.prev>0; }).sort(function(a,b){ return Math.abs(b.diff)-Math.abs(a.diff); });
+  if(rows.length===0){ el.innerHTML='<div class="empty-note">Chưa có đủ dữ liệu ở tháng này hoặc tháng trước để so sánh.</div>'; return; }
+  var body = rows.map(function(r){
+    var pctTxt = r.pct==null ? "mới" : (r.pct>=0?"+":"")+(r.pct*100).toFixed(0)+"%";
+    var color = r.diff>0 ? "var(--critical)" : r.diff<0 ? "var(--good)" : "var(--text-muted)";
+    return '<tr><td>'+esc(r.cat)+'</td><td class="tnum" style="text-align:right;">'+fmtVND(r.prev)+'</td><td class="tnum" style="text-align:right;">'+fmtVND(r.cur)+'</td>'+
+      '<td class="tnum" style="text-align:right;color:'+color+';font-weight:700;">'+fmtVNDSigned(r.diff)+' ('+pctTxt+')</td></tr>';
+  }).join("");
+  el.innerHTML = '<p class="panel-sub" style="margin-bottom:10px;">Th'+m+'/'+y+' so với Th'+pm+'/'+py+'.</p><div class="table-scroll"><table class="dt"><thead><tr><th>Danh mục</th><th style="text-align:right;">Tháng trước</th><th style="text-align:right;">Tháng này</th><th style="text-align:right;">Thay đổi</th></tr></thead><tbody>'+body+'</tbody></table></div>';
+}
+
+/* ================= RENDER: recent tx ================= */
+function renderDashRecent(){
+  var rows = state.tx.slice().sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); }).slice(0,6);
+  var el=document.getElementById("dashRecentTable");
+  if(rows.length===0){ el.innerHTML='<tr><td class="empty-note">Chưa có giao dịch nào. Thêm ở tab Giao Dịch, hoặc nhờ Claude đồng bộ từ Google Sheet.</td></tr>'; return; }
+  el.innerHTML = '<thead><tr><th>Ngày</th><th>Loại</th><th>Danh mục</th><th>Diễn giải</th><th style="text-align:right;">Số tiền</th></tr></thead><tbody>'+
+    rows.map(function(t){ return txRowHtml(t,false); }).join("")+'</tbody>';
+}
+
+/* ================= RENDER: TX TAB ================= */
+function typePillClass(type){ return type===T_INCOME?"income":type===T_INVEST?"invest":"expense"; }
+function txRowHtml(t, withDelete){
+  return '<tr>'+
+    '<td class="tnum">'+esc(t.date)+'</td>'+
+    '<td><span class="pill '+typePillClass(t.type)+'">'+esc(t.type)+'</span></td>'+
+    '<td>'+esc(t.category)+'</td>'+
+    '<td>'+esc(t.note||"–")+'</td>'+
+    '<td class="tnum" style="text-align:right;">'+fmtVND(t.amount)+'</td>'+
+    (withDelete ? '<td><button class="rowbtn" data-del-tx="'+t._id+'">Xóa</button></td>' : '')+
+    '</tr>';
+}
+function populateTxCategorySelect(){
+  var typeSel=document.getElementById("txType");
+  if(!typeSel.options.length){
+    typeSel.innerHTML = [T_INCOME,T_EXPENSE,T_INVEST].map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join("");
+  }
+  var catSel=document.getElementById("txCat");
+  var cats = typeSel.value===T_INCOME?INCOME_CATS:typeSel.value===T_INVEST?INVEST_CATS:EXPENSE_CATS;
+  catSel.innerHTML = cats.map(function(c){ return '<option value="'+esc(c)+'">'+esc(c)+'</option>'; }).join("");
+}
+function initTxForm(){
+  document.getElementById("txDate").value = todayISO();
+  document.getElementById("txType").addEventListener("change", populateTxCategorySelect);
+  populateTxCategorySelect();
+  var fltType=document.getElementById("fltType");
+  fltType.innerHTML = '<option value="">Tất cả loại</option>'+[T_INCOME,T_EXPENSE,T_INVEST].map(function(t){return '<option value="'+t+'">'+t+'</option>';}).join("");
+
+  document.getElementById("txForm").addEventListener("submit", async function(e){
+    e.preventDefault();
+    var amt = +document.getElementById("txAmt").value;
+    if(!amt || amt<=0) return;
+    var doc = {
+      date: document.getElementById("txDate").value || todayISO(),
+      type: document.getElementById("txType").value,
+      category: document.getElementById("txCat").value,
+      note: document.getElementById("txNote").value.trim(),
+      amount: amt
+    };
+    if(state.db){
+      try{ await state.db.collection("tx").add(doc); }catch(err){ alert("Không lưu được giao dịch — thử lại sau giây lát."); return; }
+    } else {
+      doc._id = "local-"+Date.now(); state.tx.push(doc); renderAll();
+    }
+    if(state.dbMode==="local") pushToSheet(doc);
+    document.getElementById("txNote").value=""; document.getElementById("txAmt").value="";
+  });
+
+  document.getElementById("fltScope").addEventListener("change", renderTxTable);
+  document.getElementById("fltType").addEventListener("change", renderTxTable);
+  document.getElementById("fltSearch").addEventListener("input", renderTxTable);
+
+  document.getElementById("txTable").addEventListener("click", async function(e){
+    var b=e.target.closest("[data-del-tx]"); if(!b) return;
+    var id=b.getAttribute("data-del-tx");
+    if(!confirm("Xóa giao dịch này?")) return;
+    if(state.db){ try{ await state.db.collection("tx").doc(id).delete(); }catch(err){} }
+    else { state.tx = state.tx.filter(function(t){ return t._id!==id; }); renderAll(); }
+  });
+}
+function renderTxTable(){
+  var scope=document.getElementById("fltScope").value;
+  var type=document.getElementById("fltType").value;
+  var q=document.getElementById("fltSearch").value.trim().toLowerCase();
+  var rows = state.tx.filter(function(t){
+    if(scope==="month" && (txMonth(t)!==state.month || txYear(t)!==state.year)) return false;
+    if(scope==="year" && txYear(t)!==state.year) return false;
+    if(type && t.type!==type) return false;
+    if(q && !((t.note||"").toLowerCase().indexOf(q)>=0 || (t.category||"").toLowerCase().indexOf(q)>=0)) return false;
+    return true;
+  }).sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
+  var el=document.getElementById("txTable");
+  if(rows.length===0){ el.innerHTML='<tr><td class="empty-note">Không có giao dịch phù hợp bộ lọc.</td></tr>'; return; }
+  el.innerHTML='<thead><tr><th>Ngày</th><th>Loại</th><th>Danh mục</th><th>Diễn giải</th><th style="text-align:right;">Số tiền</th><th></th></tr></thead><tbody>'+
+    rows.map(function(t){ return txRowHtml(t,true); }).join("")+'</tbody>';
+}
+
+/* ================= RENDER: BUDGET TAB ================= */
+function statusForPct(p){ if(p==null) return "flat"; if(p>1) return "critical"; if(p>=0.8) return "warning"; return "good"; }
+function initBudgetTab(){
+  document.getElementById("budgetMeters").addEventListener("change", async function(e){
+    var inp=e.target.closest("[data-budget-cat]"); if(!inp) return;
+    var cat=inp.getAttribute("data-budget-cat");
+    var val=+inp.value||0;
+    if(state.db){ try{ await state.db.collection("budgets").doc(slug(cat)).set({name:cat,monthlyBudget:val}); }catch(err){} }
+    else { state.budgets[slug(cat)]={name:cat,monthlyBudget:val}; renderAll(); }
+  });
+}
+function renderBudgetMeters(){
+  var m=state.month,y=state.year;
+  var html = EXPENSE_CATS.map(function(c){
+    var budget=budgetFor(c), actual=sumTx(state.tx,T_EXPENSE,m,y,c);
+    var pct = budget>0 ? actual/budget : null;
+    var status = budget>0 ? statusForPct(pct) : "flat";
+    var fillColor = status==="critical"?"var(--critical)":status==="warning"?"var(--warning)":status==="good"?"var(--good)":"var(--border-strong)";
+    var width = budget>0 ? Math.min(100,(actual/budget)*100) : (actual>0?100:0);
+    return '<div class="meter-row">'+
+      '<div class="meter-top">'+
+        '<span class="meter-name">'+esc(c)+'</span>'+
+        '<span style="display:flex;align-items:center;gap:8px;">'+
+          '<span class="meter-nums">'+fmtVND(actual)+' / </span>'+
+          '<input class="budget-input tnum" type="number" min="0" step="10000" data-budget-cat="'+esc(c)+'" value="'+budget+'">'+
+          '<span class="meter-tag '+status+'">'+(budget>0?fmtPct(pct):"chưa đặt")+'</span>'+
+        '</span>'+
+      '</div>'+
+      '<div class="meter-track"><div class="meter-fill" style="width:'+width+'%;background:'+fillColor+';"></div></div>'+
+    '</div>';
+  }).join("");
+  document.getElementById("budgetMeters").innerHTML = html;
+}
+function renderBudgetHistChart(){
+  var y=state.year, totalBudget=totalMonthlyBudget();
+  var actuals = MONTH_LABELS.map(function(_,i){ return sumTx(state.tx,T_EXPENSE,i+1,y); });
+  var budgets = MONTH_LABELS.map(function(){ return totalBudget; });
+  Charts.line({
+    el: document.getElementById("chartBudgetHist"),
+    labels: MONTH_LABELS,
+    series: [
+      {name:"Ngân sách", color:"var(--text-faint)", values:budgets, dashed:true},
+      {name:"Thực tế", color:"var(--accent-2)", values:actuals}
+    ]
+  });
+}
+
+/* ================= RENDER: INVEST TAB ================= */
+function initInvestTab(){
+  document.getElementById("investPct").addEventListener("change", async function(){
+    var v=Math.max(0,Math.min(100,+this.value||0))/100;
+    state.settings.investTargetPct=v;
+    if(state.db){ try{ await state.db.doc("settings/app").set({investTargetPct:v}); }catch(err){} }
+    else renderAll();
+  });
+  document.getElementById("investTable").addEventListener("change", async function(e){
+    var inp=e.target.closest("[data-alloc-ch]"); if(!inp) return;
+    var ch=inp.getAttribute("data-alloc-ch");
+    var v=Math.max(0,Math.min(100,+inp.value||0))/100;
+    if(state.db){ try{ await state.db.collection("investChannels").doc(slug(ch)).set({name:ch,allocPct:v,order:INVEST_CATS.indexOf(ch)}); }catch(err){} }
+    else { var c=state.investChannels.find(function(x){return x.name===ch;}); if(c) c.allocPct=v; renderAll(); }
+  });
+}
+function renderInvestTab(){
+  var m=state.month,y=state.year;
+  var income=sumTx(state.tx,T_INCOME,m,y), expense=sumTx(state.tx,T_EXPENSE,m,y);
+  var balance=income-expense;
+  var pct=state.settings.investTargetPct||0;
+  var proposed=balance*pct;
+  document.getElementById("investKpi").innerHTML = [
+    ["Tổng thu nhập", fmtVND(income)],
+    ["Tổng chi tiêu", fmtVND(expense)],
+    ["Số dư có thể đầu tư", fmtVNDSigned(balance)],
+    ["Số tiền đầu tư đề xuất", fmtVNDSigned(proposed)]
+  ].map(function(t){ return '<div class="kpi"><span class="l">'+t[0]+'</span><span class="v tnum">'+t[1]+'</span></div>'; }).join("");
+  document.getElementById("investPct").value = Math.round(pct*100);
+
+  var sumAlloc=0;
+  var rows = INVEST_CATS.map(function(ch,i){
+    var a=allocPctFor(ch); sumAlloc+=a;
+    var target=proposed*a;
+    var actual=sumTx(state.tx,T_INVEST,m,y,ch);
+    var diff=target-actual;
+    return '<tr><td>'+esc(ch)+'</td>'+
+      '<td><input class="budget-input tnum" type="number" min="0" max="100" step="1" data-alloc-ch="'+esc(ch)+'" value="'+Math.round(a*100)+'">%</td>'+
+      '<td class="tnum">'+fmtVNDSigned(target)+'</td>'+
+      '<td class="tnum">'+fmtVND(actual)+'</td>'+
+      '<td class="tnum" style="color:'+(diff<0?"var(--good)":"var(--text-muted)")+';">'+fmtVNDSigned(diff)+'</td></tr>';
+  }).join("");
+  var actualTotal = sumTx(state.tx,T_INVEST,m,y);
+  rows += '<tr class="subtotal-row"><td>TỔNG CỘNG</td><td class="tnum">'+Math.round(sumAlloc*100)+'%</td><td class="tnum">'+fmtVNDSigned(proposed*sumAlloc)+'</td><td class="tnum">'+fmtVND(actualTotal)+'</td><td></td></tr>';
+  document.getElementById("investTable").innerHTML =
+    '<thead><tr><th>Kênh đầu tư</th><th>Tỷ lệ phân bổ</th><th>Số tiền mục tiêu</th><th>Đã đầu tư thực tế</th><th>Chênh lệch</th></tr></thead><tbody>'+rows+'</tbody>';
+
+  document.getElementById("allocWarn").innerHTML = Math.round(sumAlloc*100)!==100
+    ? '<p class="warn-inline">⚠ Tổng tỷ lệ phân bổ hiện là '+Math.round(sumAlloc*100)+'%, chưa đủ 100%.</p>' : "";
+
+  var slices = INVEST_CATS.map(function(ch,i){ return {label:ch, value:allocPctFor(ch), color:CAT_COLORS[i%CAT_COLORS.length]}; }).filter(function(s){return s.value>0;});
+  Charts.donut({ el: document.getElementById("chartAllocDonut"), slices: slices, fmt: function(v){ return fmtPct(v/(sumAlloc||1)); }, centerLabel: fmtPct(sumAlloc) });
+}
+
+/* ================= RENDER: ASSETS TAB ================= */
+function initAssetsTab(){
+  var sel=document.getElementById("asType");
+  sel.innerHTML = ASSET_TYPES.map(function(t){ return '<option value="'+esc(t)+'">'+esc(t)+'</option>'; }).join("");
+  document.getElementById("assetForm").addEventListener("submit", async function(e){
+    e.preventDefault();
+    var bal=+document.getElementById("asBal").value;
+    var doc={ type: sel.value, name: document.getElementById("asName").value.trim(), balance: bal||0, note: document.getElementById("asNote").value.trim() };
+    if(!doc.name) return;
+    if(state.db){ try{ await state.db.collection("assets").add(doc); }catch(err){} }
+    else { doc._id="local-"+Date.now(); state.assets.push(doc); renderAll(); }
+    document.getElementById("asName").value=""; document.getElementById("asBal").value=""; document.getElementById("asNote").value="";
+  });
+  document.getElementById("assetsTable").addEventListener("click", async function(e){
+    var b=e.target.closest("[data-del-asset]"); if(!b) return;
+    var id=b.getAttribute("data-del-asset");
+    if(!confirm("Xóa tài sản này?")) return;
+    if(state.db){ try{ await state.db.collection("assets").doc(id).delete(); }catch(err){} }
+    else { state.assets=state.assets.filter(function(a){return a._id!==id;}); renderAll(); }
+  });
+  document.getElementById("btnSnapshot").addEventListener("click", async function(){
+    var total = state.assets.reduce(function(s,a){ return s+(+a.balance||0); },0);
+    var doc={ month: state.month, year: state.year, total: total, note: "Lưu thủ công từ web app" };
+    if(state.db){ try{ await state.db.collection("assetSnapshots").add(doc); }catch(err){} }
+    else { doc._id="local-"+Date.now(); state.snapshots.push(doc); renderAll(); }
+  });
+}
+function renderAssetsTab(){
+  var total = state.assets.reduce(function(s,a){ return s+(+a.balance||0); },0);
+  var allExpense = sumTx(state.tx,T_EXPENSE);
+  var net = total-allExpense;
+  document.getElementById("assetsKpi").innerHTML = [
+    ["Tổng cộng tài sản", fmtVND(total)],
+    ["Sau khi trừ toàn bộ chi tiêu (từ trước đến nay)", fmtVNDSigned(net)]
+  ].map(function(t){ return '<div class="kpi"><span class="l">'+t[0]+'</span><span class="v tnum">'+t[1]+'</span></div>'; }).join("");
+
+  var rows = state.assets.slice().sort(function(a,b){ return (b.balance||0)-(a.balance||0); }).map(function(a){
+    return '<tr><td>'+esc(a.type)+'</td><td>'+esc(a.name)+'</td><td class="tnum" style="text-align:right;">'+fmtVND(a.balance)+'</td><td>'+esc(a.note||"–")+'</td><td><button class="rowbtn" data-del-asset="'+a._id+'">Xóa</button></td></tr>';
+  }).join("");
+  document.getElementById("assetsTable").innerHTML = state.assets.length===0
+    ? '<tr><td class="empty-note">Chưa có tài sản nào.</td></tr>'
+    : '<thead><tr><th>Loại</th><th>Tên</th><th style="text-align:right;">Số dư</th><th>Ghi chú</th><th></th></tr></thead><tbody>'+rows+'</tbody>';
+
+  var byType={};
+  state.assets.forEach(function(a){ byType[a.type]=(byType[a.type]||0)+(+a.balance||0); });
+  var typeSlices = Object.keys(byType).map(function(t,i){ return {label:t, value:byType[t], color:CAT_COLORS[i%CAT_COLORS.length]}; });
+  Charts.donut({ el: document.getElementById("chartAssetDonut"), slices: typeSlices, fmt: fmtVND, centerLabel: fmtVND(total) });
+
+  var snapRows = state.snapshots.slice().map(function(s){
+    return '<tr><td>Th'+s.month+'/'+s.year+'</td><td class="tnum" style="text-align:right;">'+fmtVND(s.total)+'</td><td>'+esc(s.note||"")+'</td></tr>';
+  }).join("");
+  document.getElementById("snapTable").innerHTML = state.snapshots.length===0
+    ? '<tr><td class="empty-note">Chưa có snapshot nào — bấm "Lưu snapshot tháng này" để bắt đầu theo dõi.</td></tr>'
+    : '<thead><tr><th>Tháng/Năm</th><th style="text-align:right;">Tổng tài sản</th><th>Ghi chú</th></tr></thead><tbody>'+snapRows+'</tbody>';
+
+  var labels = state.snapshots.map(function(s){ return "Th"+s.month+"/"+s.year; });
+  var values = state.snapshots.map(function(s){ return s.total; });
+  Charts.line({ el: document.getElementById("chartNetWorth"), labels: labels, series:[{name:"Tổng tài sản", color:"var(--accent)", values:values}] });
+}
+
+/* ================= RENDER: YEAR BAR + EXPENSE DONUT (dashboard) ================= */
+function renderYearChart(){
+  var y=state.year;
+  var inc=MONTH_LABELS.map(function(_,i){return sumTx(state.tx,T_INCOME,i+1,y);});
+  var exp=MONTH_LABELS.map(function(_,i){return sumTx(state.tx,T_EXPENSE,i+1,y);});
+  var inv=MONTH_LABELS.map(function(_,i){return sumTx(state.tx,T_INVEST,i+1,y);});
+  Charts.bars({
+    el: document.getElementById("chartYear"),
+    labels: MONTH_LABELS,
+    series: [
+      {name:"Thu nhập", color:"var(--s3)", values:inc},
+      {name:"Chi tiêu", color:"var(--s2)", values:exp},
+      {name:"Đầu tư", color:"var(--s1)", values:inv}
+    ]
+  });
+}
+function renderExpenseDonut(){
+  var m=state.month,y=state.year;
+  var byCat={};
+  EXPENSE_CATS.forEach(function(c){ var a=sumTx(state.tx,T_EXPENSE,m,y,c); if(a>0) byCat[c]=a; });
+  var entries = Object.keys(byCat).map(function(c){ return {label:c, value:byCat[c]}; }).sort(function(a,b){ return b.value-a.value; });
+  var top = entries.slice(0,6);
+  var rest = entries.slice(6).reduce(function(s,e){ return s+e.value; },0);
+  var slices = top.map(function(e,i){ return {label:e.label, value:e.value, color:CAT_COLORS[i%CAT_COLORS.length]}; });
+  if(rest>0) slices.push({label:"Khác", value:rest, color:"var(--text-faint)"});
+  var total = slices.reduce(function(s,x){return s+x.value;},0);
+  Charts.donut({ el: document.getElementById("chartExpDonut"), slices: slices, fmt: fmtVND, centerLabel: fmtVND(total) });
+}
+
+/* ================= CHARTS (inline SVG, dataviz-style) ================= */
+var Charts = {};
+(function(){
+  var tip = null;
+  function getTip(){ if(!tip) tip=document.getElementById("ctooltip"); return tip; }
+  function showTip(evt, html){
+    var t=getTip(); t.innerHTML=html; t.classList.add("show");
+    var x=evt.clientX+14, y=evt.clientY+14;
+    var vw=window.innerWidth, vh=window.innerHeight;
+    t.style.left = Math.min(x, vw-230)+"px";
+    t.style.top = Math.min(y, vh-70)+"px";
+  }
+  function hideTip(){ var t=getTip(); t.classList.remove("show"); }
+  function resolveColor(c){
+    if(c.indexOf("var(")===0){
+      var name=c.slice(4,-1);
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#888";
+    }
+    return c;
+  }
+
+  Charts.bars = function(opts){
+    var el=opts.el, labels=opts.labels, series=opts.series;
+    var W=720,H=260,padL=54,padR=10,padT=10,padB=28;
+    var plotW=W-padL-padR, plotH=H-padT-padB;
+    var maxV = Math.max(1, Math.max.apply(null, series.map(function(s){ return Math.max.apply(null,s.values); })));
+    var niceMax = maxV<=0?1:Math.pow(10,Math.ceil(Math.log10(maxV)))*(maxV/Math.pow(10,Math.ceil(Math.log10(maxV)))<=0.55?0.6:1);
+    niceMax = maxV*1.15;
+    var n=labels.length, groupW=plotW/n, barW=Math.max(3,(groupW*0.72)/series.length);
+    var gridN=4, gridLines="";
+    for(var g=0;g<=gridN;g++){
+      var gy=padT+plotH-(plotH*g/gridN);
+      gridLines += '<line x1="'+padL+'" x2="'+(padL+plotW)+'" y1="'+gy+'" y2="'+gy+'" stroke="var(--border)" stroke-width="1"/>';
+      gridLines += '<text x="'+(padL-8)+'" y="'+(gy+3)+'" font-size="9.5" fill="var(--text-faint)" text-anchor="end" font-family="var(--font-mono)">'+fmtCompact(niceMax*g/gridN)+'</text>';
+    }
+    var bars="", labelsHtml="";
+    labels.forEach(function(lab,i){
+      var gx = padL+i*groupW;
+      labelsHtml += '<text x="'+(gx+groupW/2)+'" y="'+(H-8)+'" font-size="10" fill="var(--text-faint)" text-anchor="middle">'+lab+'</text>';
+      series.forEach(function(s,si){
+        var v=s.values[i]||0;
+        var bh = plotH*Math.max(0,v)/niceMax;
+        var bx = gx + (groupW-barW*series.length)/2 + si*barW;
+        var by = padT+plotH-bh;
+        bars += '<rect class="bar-mark" x="'+bx.toFixed(1)+'" y="'+by.toFixed(1)+'" width="'+(barW-1.5).toFixed(1)+'" height="'+Math.max(0,bh).toFixed(1)+'" fill="'+s.color+'" rx="2" data-tip="'+esc(s.name+" · "+lab+": "+fmtVND(v))+'"></rect>';
+      });
+    });
+    var legend = series.map(function(s){ return '<span class="legend-item"><span class="legend-swatch" style="background:'+s.color+';"></span>'+s.name+'</span>'; }).join("");
+    el.innerHTML = '<div class="chart-legend">'+legend+'</div><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">'+gridLines+bars+labelsHtml+'</svg>';
+    wireTooltips(el);
+  };
+
+  Charts.line = function(opts){
+    var el=opts.el, labels=opts.labels, series=opts.series;
+    var hasData = series.some(function(s){ return s.values.some(function(v){ return v!=null && v!==0; }); }) && labels.length>0;
+    if(!labels.length){ el.innerHTML='<div class="chart-empty">Chưa có dữ liệu.</div>'; return; }
+    var W=720,H=260,padL=54,padR=14,padT=14,padB=28;
+    var plotW=W-padL-padR, plotH=H-padT-padB;
+    var allVals=[]; series.forEach(function(s){ s.values.forEach(function(v){ if(v!=null) allVals.push(v); }); });
+    var maxV=Math.max.apply(null,allVals.concat([1])), minV=Math.min.apply(null,allVals.concat([0]));
+    if(minV>0) minV=0;
+    var range=(maxV-minV)||1;
+    var n=labels.length;
+    var x=function(i){ return n<=1 ? padL+plotW/2 : padL+plotW*i/(n-1); };
+    var y=function(v){ return padT+plotH-(plotH*(v-minV)/range); };
+    var gridN=4, gridLines="";
+    for(var g=0;g<=gridN;g++){
+      var vv=minV+range*g/gridN, gy=y(vv);
+      gridLines += '<line x1="'+padL+'" x2="'+(padL+plotW)+'" y1="'+gy+'" y2="'+gy+'" stroke="var(--border)" stroke-width="1"/>';
+      gridLines += '<text x="'+(padL-8)+'" y="'+(gy+3)+'" font-size="9.5" fill="var(--text-faint)" text-anchor="end" font-family="var(--font-mono)">'+fmtCompact(vv)+'</text>';
+    }
+    var labelsHtml="";
+    labels.forEach(function(lab,i){ if(n>1 && i%Math.ceil(n/12)!==0) return; labelsHtml += '<text x="'+x(i)+'" y="'+(H-8)+'" font-size="10" fill="var(--text-faint)" text-anchor="middle">'+lab+'</text>'; });
+    var paths="", dots="";
+    series.forEach(function(s){
+      var pts = s.values.map(function(v,i){ return x(i)+","+y(v==null?minV:v); }).join(" ");
+      paths += '<polyline points="'+pts+'" fill="none" stroke="'+s.color+'" stroke-width="2.5" '+(s.dashed?'stroke-dasharray="5,4"':'')+' stroke-linejoin="round" stroke-linecap="round"/>';
+      s.values.forEach(function(v,i){
+        if(v==null) return;
+        dots += '<circle cx="'+x(i)+'" cy="'+y(v)+'" r="4" fill="'+s.color+'" stroke="var(--surface)" stroke-width="1.5" data-tip="'+esc(s.name+" · "+labels[i]+": "+fmtVND(v))+'"></circle>';
+      });
+    });
+    var legend = series.length>1 ? '<div class="chart-legend">'+series.map(function(s){ return '<span class="legend-item"><span class="legend-swatch" style="background:'+s.color+';"></span>'+s.name+'</span>'; }).join("")+'</div>' : "";
+    el.innerHTML = legend+'<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">'+gridLines+paths+dots+labelsHtml+'</svg>';
+    wireTooltips(el);
+  };
+
+  Charts.donut = function(opts){
+    var el=opts.el, slices=opts.slices||[], fmt=opts.fmt||fmtVND;
+    var total = slices.reduce(function(s,x){ return s+x.value; },0);
+    if(total<=0 || slices.length===0){ el.innerHTML='<div class="chart-empty">Chưa có dữ liệu.</div>'; return; }
+    var cx=110,cy=110,r=88,rInner=54;
+    var a0=-Math.PI/2, paths="";
+    slices.forEach(function(s){
+      var frac=s.value/total, a1=a0+frac*Math.PI*2;
+      var x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0), x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+      var xi0=cx+rInner*Math.cos(a1), yi0=cy+rInner*Math.sin(a1), xi1=cx+rInner*Math.cos(a0), yi1=cy+rInner*Math.sin(a0);
+      var large = (a1-a0)>Math.PI ? 1:0;
+      var d = 'M'+x0+','+y0+' A'+r+','+r+' 0 '+large+' 1 '+x1+','+y1+' L'+xi0+','+yi0+' A'+rInner+','+rInner+' 0 '+large+' 0 '+xi1+','+yi1+' Z';
+      paths += '<path d="'+d+'" fill="'+s.color+'" stroke="var(--surface)" stroke-width="2" data-tip="'+esc(s.label+": "+fmt(s.value)+" ("+((frac*100).toFixed(1))+"%)")+'"></path>';
+      a0=a1;
+    });
+    var center = opts.centerLabel!=null ? '<text x="'+cx+'" y="'+(cy+5)+'" font-size="14" font-weight="700" fill="var(--text)" text-anchor="middle" font-family="var(--font-mono)">'+esc(opts.centerLabel)+'</text>' : "";
+    var legend = '<div class="chart-legend">'+slices.map(function(s){ return '<span class="legend-item"><span class="legend-swatch" style="background:'+s.color+';"></span>'+esc(s.label)+'</span>'; }).join("")+'</div>';
+    el.innerHTML = '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">'+
+      '<svg viewBox="0 0 220 220" style="width:200px;height:200px;flex:none;">'+paths+center+'</svg>'+
+      '<div style="flex:1;min-width:140px;">'+legend+'</div></div>';
+    wireTooltips(el);
+  };
+
+  function fmtCompact(v){
+    var av=Math.abs(v);
+    if(av>=1e9) return (v/1e9).toFixed(1)+"B";
+    if(av>=1e6) return (v/1e6).toFixed(1)+"M";
+    if(av>=1e3) return (v/1e3).toFixed(0)+"K";
+    return String(Math.round(v));
+  }
+  function wireTooltips(el){
+    el.querySelectorAll("[data-tip]").forEach(function(node){
+      node.addEventListener("mousemove", function(e){ showTip(e, node.getAttribute("data-tip")); });
+      node.addEventListener("mouseleave", hideTip);
+    });
+  }
+})();
+
+/* ================= RENDER ALL ================= */
+function renderAll(){
+  if(state.activeTab==="dashboard"){ renderDashKpi(); renderForecast(); renderHealthScore(); renderDashRecent(); renderYearChart(); renderExpenseDonut(); }
+  else if(state.activeTab==="tx"){ renderTxTable(); }
+  else if(state.activeTab==="budget"){ renderBudgetMeters(); renderBudgetHistChart(); renderMonthCompare(); }
+  else if(state.activeTab==="invest"){ renderInvestTab(); }
+  else if(state.activeTab==="assets"){ renderAssetsTab(); }
+}
+
+/* ================= BOOT ================= */
+function boot(){
+  initTheme(); initPeriodPicker(); initTxForm(); initBudgetTab(); initInvestTab(); initAssetsTab(); initTabs(); initBackup(); initSheetBridge();
+  initDB();
+}
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", boot); else boot();
+
+})();
+</script>
