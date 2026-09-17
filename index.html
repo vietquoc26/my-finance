@@ -886,13 +886,21 @@ function pushToSheet(tx){
   var url = state.settings.sheetWebhookUrl;
   if(!url || !tx._id) return;
   markPending(tx._id, "add");
+  // Nhớ lại là đang có một giao dịch CHỜ Sheet xác nhận đã nhận được — nếu
+  // lần đẩy này thất bại âm thầm (mất mạng, Apps Script lỗi/timeout…), lượt
+  // đồng bộ định kỳ tiếp theo sẽ thấy id này vẫn còn trong unsyncedIds mà
+  // chưa xuất hiện trên Sheet, và tự động thử đẩy lại — thay vì mất luôn
+  // như trước (trước đây chỉ thử đúng 1 lần rồi bỏ qua lỗi).
+  unsyncedIds[tx._id] = Date.now();
+  saveUnsyncedIds();
   var payload = { action:"add", id:tx._id, date:tx.date, type:tx.type, category:tx.category, note:tx.note||"", amount:tx.amount };
-  fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(payload)}).catch(function(){ /* best-effort; Apps Script CORS responses are often opaque */ });
+  fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(payload)}).catch(function(){ /* best-effort; lượt đồng bộ định kỳ sẽ tự thử lại nếu cần */ });
 }
 function pushDeleteToSheet(id){
   var url = state.settings.sheetWebhookUrl;
   if(!url || !id) return;
   markPending(id, "delete");
+  delete unsyncedIds[id]; saveUnsyncedIds(); // đã xóa khỏi app rồi thì thôi không cần đẩy "add" nữa
   fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"delete", id:id})}).catch(function(){ /* best-effort */ });
 }
 
@@ -900,9 +908,15 @@ function pushDeleteToSheet(id){
 var SHEET_POLL_MS = 18000;
 var SHEET_GRACE_MS = 20000;
 var SHEET_SYNCED_KEY = "sotc_sheet_synced_ids_v1";
+var SHEET_UNSYNCED_KEY = "sotc_sheet_unsynced_ids_v1";
 var sheetPolling = false, sheetPollTimer = null, sheetPullInFlight = false;
 var pendingSync = {}; // id -> {type:"add"|"delete", ts}
 var syncedIds = (function(){ try{ var raw=localStorage.getItem(SHEET_SYNCED_KEY); return raw?JSON.parse(raw):{}; }catch(e){ return {}; } })();
+// id -> lúc app đẩy (push) giao dịch này sang Sheet lần gần nhất mà CHƯA
+// thấy Sheet xác nhận đã nhận (chưa gặp lại id này trong lượt "list" nào).
+// Chỉ những giao dịch app tự tay đẩy mới vào danh sách này — dữ liệu mẫu/cũ
+// có sẵn trước khi bật đồng bộ sẽ không bao giờ lọt vào đây.
+var unsyncedIds = (function(){ try{ var raw=localStorage.getItem(SHEET_UNSYNCED_KEY); return raw?JSON.parse(raw):{}; }catch(e){ return {}; } })();
 
 function markPending(id, type){ if(id) pendingSync[id] = { type:type, ts:Date.now() }; }
 function cleanupPending(){
@@ -910,6 +924,7 @@ function cleanupPending(){
   Object.keys(pendingSync).forEach(function(id){ if(now-pendingSync[id].ts > SHEET_GRACE_MS) delete pendingSync[id]; });
 }
 function saveSyncedIds(){ try{ localStorage.setItem(SHEET_SYNCED_KEY, JSON.stringify(syncedIds)); }catch(e){} }
+function saveUnsyncedIds(){ try{ localStorage.setItem(SHEET_UNSYNCED_KEY, JSON.stringify(unsyncedIds)); }catch(e){} }
 function toTxDoc(it){ return { date: it.date, type: it.type||"", category: it.category||"", note: it.note||"", amount: Number(it.amount)||0 }; }
 function sameTx(a,b){ return a.date===b.date && a.type===b.type && a.category===b.category && (a.note||"")===(b.note||"") && Number(a.amount)===Number(b.amount); }
 
@@ -972,12 +987,31 @@ async function reconcileFromSheet(items, url){
   for(var j=0;j<idKeys.length;j++){
     var id = idKeys[j];
     syncedIds[id] = true;
+    delete unsyncedIds[id]; // Sheet đã xác nhận nhận được — không cần đẩy lại nữa
     if(pendingSync[id] && pendingSync[id].type==="delete") continue; // vừa xóa ở app, đợi Sheet ghi nhận — đừng hồi sinh
     var incoming = toTxDoc(sheetIds[id]);
     var existing = localById[id];
     if(existing && sameTx(existing, incoming)) continue; // không đổi gì — bỏ qua để tránh ghi/re-render thừa
     try{ await col.doc(id).set(incoming); }catch(e){}
   }
+
+  // Những giao dịch app đã CỐ đẩy (push) sang Sheet nhưng chưa được Sheet
+  // xác nhận nhận được (vẫn còn trong unsyncedIds) → lượt đẩy trước đó nhiều
+  // khả năng đã thất bại âm thầm (mất mạng tạm thời, Apps Script lỗi/
+  // timeout…), vì trước giờ pushToSheet() chỉ thử gửi đúng 1 lần rồi bỏ qua
+  // lỗi (fetch().catch(){}), không có gì gửi lại — đây chính là nguyên nhân
+  // khiến một giao dịch mới thêm trên app đôi khi không hiện trên Sheet.
+  // Chỉ retry những giao dịch app THỰC SỰ đã từng cố đẩy (không đụng tới dữ
+  // liệu mẫu/cũ có sẵn trước khi bật đồng bộ — loại đó chưa từng vào hàng
+  // đợi này nên không tự nhiên bị đẩy lên Sheet ngoài ý muốn).
+  Object.keys(unsyncedIds).forEach(function(id){
+    if(sheetIds[id]){ delete unsyncedIds[id]; return; } // đã có trên Sheet rồi
+    if(pendingSync[id]) return; // đang trong thời gian chờ của lượt đẩy trước, chưa cần thử lại
+    var t = localById[id];
+    if(!t){ delete unsyncedIds[id]; return; } // giao dịch đã bị xóa khỏi app trước khi kịp đồng bộ
+    pushToSheet(t);
+  });
+  saveUnsyncedIds();
 
   // Giao dịch từng được xác nhận có trong Sheet (syncedIds) nhưng giờ biến
   // mất khỏi danh sách Sheet trả về → bị xóa trực tiếp trên Sheet, xóa theo
