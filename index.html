@@ -201,6 +201,15 @@ table.dt tr:hover td{background:var(--surface-2);}
 .sync-hint{display:flex;gap:9px;align-items:flex-start;background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--radius-lg);padding:12px 15px;font-size:12.5px;color:var(--text);}
 .sync-hint svg{width:16px;height:16px;flex:none;color:var(--accent);margin-top:1px;}
 .sync-hint code{background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-family:var(--font-mono);font-size:11.5px;}
+.sync-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.sync-help{margin-top:10px;}
+.sync-help summary{font-size:11.5px;color:var(--text-faint);cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:5px;}
+.sync-help summary::-webkit-details-marker{display:none;}
+.sync-help summary:hover{color:var(--text-muted);}
+.sync-help summary::before{content:"›";display:inline-block;transition:transform .15s;font-weight:700;}
+.sync-help[open] summary::before{transform:rotate(90deg);}
+.sync-help p{font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.55;}
+.sync-help code{background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-family:var(--font-mono);font-size:11px;}
 
 /* ===== FILTER ROW ===== */
 .filter-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px;}
@@ -296,19 +305,25 @@ table.dt tr:hover td{background:var(--surface-2);}
       <span id="syncHintTxt">Web app này lưu giao dịch riêng, không tự động kéo dữ liệu mới từ Google Sheet.</span>
     </div>
     <div class="panel" id="sheetBridgePanel" hidden>
-      <div class="panel-head"><span class="panel-title" style="margin:0;">Đồng bộ 2 chiều với Google Sheet</span></div>
-      <p class="panel-sub" style="margin-bottom:10px;">Dán URL Web App (Apps Script) đã triển khai — giao dịch thêm/xóa ở đây sẽ tự ghi sang Google Sheet, và ngược lại: giao dịch bạn thêm/sửa/xóa thẳng trên Sheet cũng sẽ tự về app (kiểm tra lại mỗi ~15-20 giây, và ngay khi bạn mở lại app). Xem hướng dẫn triển khai kèm theo file <code>GhiSoGiaoDich.gs</code> (cần bản mới nhất — Phiên bản 4).</p>
+      <div class="panel-head">
+        <span class="panel-title" style="margin:0;">Đồng bộ Google Sheet</span>
+        <span class="dbchip" id="sheetChip"><span class="dot"></span><span id="sheetChipTxt">Chưa bật</span></span>
+      </div>
       <div class="form-grid sheetsync" style="max-width:760px;">
-        <div class="field"><label for="sheetUrl">URL Web App</label><input type="url" id="sheetUrl" placeholder="https://script.google.com/macros/s/.../exec"></div>
+        <div class="field"><input type="url" id="sheetUrl" placeholder="URL Web App (Apps Script) …/exec" aria-label="URL Web App"></div>
         <button type="button" class="btn btn-secondary" id="btnSheetTest">Kiểm tra</button>
         <button type="button" class="btn btn-primary" id="btnSheetSave">Lưu</button>
       </div>
       <p class="note-inline" id="sheetBridgeStatus" style="margin-top:8px;"></p>
-      <p class="note-inline" id="sheetSyncNowRow" style="margin-top:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <button type="button" class="btn btn-secondary" id="btnSheetSyncNow">Đồng bộ ngay</button>
-        <button type="button" class="btn btn-secondary" id="btnDedupeTx" title="Dùng khi thấy giao dịch bị nhân đôi sau lần đầu bật đồng bộ 2 chiều">Dọn giao dịch trùng lặp</button>
-        <span id="sheetSyncNowStatus" style="color:var(--text-faint);"></span>
-      </p>
+      <div class="sync-toolbar">
+        <button type="button" class="backup-btn" id="btnSheetSyncNow">↻ Đồng bộ ngay</button>
+        <button type="button" class="backup-btn" id="btnDedupeTx" title="Dùng khi thấy giao dịch bị nhân đôi sau lần đầu bật đồng bộ 2 chiều">Dọn trùng lặp</button>
+        <span class="note-inline" id="sheetSyncNowStatus"></span>
+      </div>
+      <details class="sync-help">
+        <summary>Cách hoạt động &amp; hướng dẫn triển khai</summary>
+        <p>Giao dịch thêm/xóa ở app tự ghi sang Google Sheet, và ngược lại — sửa trực tiếp trên Sheet cũng tự về app (kiểm tra lại mỗi ~15–20 giây, và ngay khi bạn mở lại app). Cần triển khai kèm file <code>GhiSoGiaoDich.gs</code> bản mới nhất (Phiên bản 5).</p>
+      </details>
     </div>
     <div class="panel">
       <div class="panel-head"><span class="panel-title" style="margin:0;">Sổ giao dịch</span></div>
@@ -611,6 +626,7 @@ async function initDB(){
         state.settings.sheetWebhookUrl=v.sheetWebhookUrl;
         var urlInp=document.getElementById("sheetUrl");
         if(urlInp && document.activeElement!==urlInp) urlInp.value=v.sheetWebhookUrl;
+        setSheetChip(!!v.sheetWebhookUrl);
         if(v.sheetWebhookUrl && mode==="local") startSheetPolling();
       }
     }
@@ -798,6 +814,12 @@ function setSheetStatus(msg, kind){
   p.textContent = msg;
   p.style.color = kind==="ok" ? "var(--good)" : kind==="warn" ? "var(--critical)" : "var(--text-faint)";
 }
+function setSheetChip(on){
+  var chip=document.getElementById("sheetChip"), txt=document.getElementById("sheetChipTxt");
+  if(!chip) return;
+  chip.className = "dbchip " + (on?"on":"");
+  txt.textContent = on ? "Đã bật" : "Chưa bật";
+}
 function setSyncNowMsg(msg, warn){
   var s=document.getElementById("sheetSyncNowStatus"); if(!s) return;
   s.textContent = msg;
@@ -819,7 +841,8 @@ function initSheetBridge(){
   document.getElementById("btnSheetSave").addEventListener("click", async function(){
     var url = urlInp.value.trim();
     await saveSheetWebhookUrl(url);
-    setSheetStatus(url ? "Đã lưu. Giao dịch mới sẽ tự động gửi sang Google Sheet, và app sẽ tự kiểm tra Sheet định kỳ để cập nhật ngược lại." : "Đã tắt đồng bộ tự động.", url?"ok":"");
+    setSheetChip(!!url);
+    setSheetStatus(url ? "Đã lưu — đồng bộ tự động cả hai chiều." : "Đã tắt đồng bộ tự động.", url?"ok":"");
     if(url) startSheetPolling();
   });
   document.getElementById("btnSheetTest").addEventListener("click", async function(){
@@ -830,7 +853,7 @@ function initSheetBridge(){
       var res = await fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"ping"})});
       var txt = await res.text();
       var ok=false; try{ ok = JSON.parse(txt).status==="ok"; }catch(e){}
-      setSheetStatus(ok ? "Kết nối thành công! Giao dịch mới sẽ tự động ghi vào Sheet. ✓" : "Đã gửi được yêu cầu nhưng không đọc được phản hồi — kiểm tra thử trong Google Sheet xem có dòng mới không.", ok?"ok":"warn");
+      setSheetStatus(ok ? "Kết nối thành công. ✓" : "Không đọc được phản hồi — kiểm tra thử trong Google Sheet xem có dòng mới không.", ok?"ok":"warn");
     }catch(e){ setSheetStatus("Không kết nối được — kiểm tra lại URL và bước triển khai (Anyone can access) của Web App.", "warn"); }
   });
   var syncNowBtn = document.getElementById("btnSheetSyncNow");
