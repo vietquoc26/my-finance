@@ -100,6 +100,32 @@ button{font-family:inherit;cursor:pointer;}
 .tabbtn{flex:0 0 auto;border:1px solid transparent;background:transparent;color:var(--text-muted);font-weight:600;font-size:13.5px;padding:9px 15px;border-radius:999px;white-space:nowrap;}
 .tabbtn:hover{color:var(--text);}
 .tabbtn.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);}
+
+/* ===== BOTTOM NAV (điện thoại) =====
+   Trên màn hình rộng vẫn dùng hàng tab ngang phía trên như cũ (đủ chỗ, ít
+   khi cần cuộn dài). Trên điện thoại, hàng tab đó nằm trong luồng cuộn nên
+   cuộn xuống là mất — thay bằng thanh điều hướng CỐ ĐỊNH dưới đáy màn hình
+   (kiểu app Android/iOS thật), luôn thấy được dù đang cuộn ở đâu. */
+.bottomnav{display:none;}
+@media(max-width:680px){
+  .tabbar{display:none;}
+  main.wrap{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px));}
+  .bottomnav{
+    display:flex;
+    position:fixed; left:0; right:0; bottom:0; z-index:40;
+    background:var(--bg); border-top:1px solid var(--border);
+    padding:5px 2px calc(5px + env(safe-area-inset-bottom,0px));
+    box-shadow:0 -4px 16px rgba(0,0,0,.08);
+  }
+  .bnbtn{
+    flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    border:none; background:transparent; color:var(--text-faint); padding:6px 2px; border-radius:10px;
+    font-size:10px; font-weight:600; line-height:1.15;
+  }
+  .bnbtn svg{width:20px;height:20px;flex:none;}
+  .bnbtn span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .bnbtn.active{color:var(--accent);}
+}
 main{padding-block:0 60px;display:flex;flex-direction:column;gap:18px;}
 section[data-tab]{display:flex;flex-direction:column;gap:18px;scroll-margin-top:76px;}
 section[data-tab][hidden]{display:none;} /* [hidden] alone loses to the rule above on specificity — this restores it */
@@ -418,6 +444,28 @@ table.dt tr:hover td{background:var(--surface-2);}
 
   <div class="footer-note" id="footerNote">Sổ Tài Chính · nguồn: Google Sheet "Sổ Quản Lý Tài Chính Cá Nhân"</div>
 </main>
+<nav class="bottomnav" id="bottomNav">
+  <button class="bnbtn" data-tab="dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 4l9 7"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
+    <span>Tổng Quan</span>
+  </button>
+  <button class="bnbtn" data-tab="tx">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="14" y2="17"/></svg>
+    <span>Giao Dịch</span>
+  </button>
+  <button class="bnbtn" data-tab="budget">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v9h9"/></svg>
+    <span>Ngân Sách</span>
+  </button>
+  <button class="bnbtn" data-tab="invest">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 9 11l4 4 8-8"/><path d="M15 7h6v6"/></svg>
+    <span>Đầu Tư</span>
+  </button>
+  <button class="bnbtn" data-tab="assets">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="M3 13l9 5 9-5"/></svg>
+    <span>Tài Sản</span>
+  </button>
+</nav>
 <div class="ctooltip" id="ctooltip"></div>
 
 <script>
@@ -477,12 +525,20 @@ function initTabs(){
     setTab(b.getAttribute("data-tab"));
     scrollToActiveTab();
   });
+  // Thanh điều hướng cố định dưới đáy (chỉ hiện trên điện thoại, xem CSS
+  // .bottomnav) — cùng cơ chế chuyển tab như hàng tab phía trên.
+  var bottomNav = document.getElementById("bottomNav");
+  if(bottomNav) bottomNav.addEventListener("click", function(e){
+    var b=e.target.closest(".bnbtn"); if(!b) return;
+    setTab(b.getAttribute("data-tab"));
+    scrollToActiveTab();
+  });
   document.getElementById("btnGotoTx").addEventListener("click", function(){ setTab("tx"); scrollToActiveTab(); });
   setTab("dashboard");
 }
 function setTab(tab){
   state.activeTab = tab;
-  document.querySelectorAll(".tabbtn").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-tab")===tab); });
+  document.querySelectorAll(".tabbtn,.bnbtn").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-tab")===tab); });
   document.querySelectorAll("section[data-tab]").forEach(function(s){ s.hidden = s.getAttribute("data-tab")!==tab; });
   renderAll();
 }
