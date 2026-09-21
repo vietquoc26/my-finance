@@ -169,6 +169,21 @@ section[data-tab][hidden]{display:none;} /* [hidden] alone loses to the rule abo
 .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);font-weight:600;}
 .legend-swatch{width:10px;height:10px;border-radius:2px;flex:none;}
 .chart-empty{font-size:13px;color:var(--text-muted);padding:34px 0;text-align:center;}
+/* Bật "Ẩn số tiền": số liệu text đã được thay bằng dấu chấm ngay trong
+   fmtVND()/fmtVNDSigned()/fmtCompact() (xem JS), nhưng hình dạng biểu đồ
+   (chiều cao cột, góc lát bánh donut) vẫn tỷ lệ thật với số tiền thật — làm
+   mờ đi để không lộ tương quan số liệu qua hình dạng. */
+body.privacy-on .chart-box > *:not(.chart-empty){filter:blur(7px);user-select:none;}
+body.privacy-on .chart-box::after{
+  content:"🔒 Đã ẩn để bảo mật";
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:600;color:var(--text-muted);pointer-events:none;
+}
+body.privacy-on .chart-box:has(.chart-empty)::after{content:"";}
+/* Ô nhập hạn mức ngân sách (VNĐ) vẫn là số thật gõ tay — làm mờ luôn cho
+   nhất quán với phần "đã chi" ngay cạnh nó đã bị ẩn bằng dấu chấm. Không
+   đụng tới ô % (phân bổ đầu tư, % mục tiêu đầu tư) vì đó không phải số tiền. */
+body.privacy-on input[data-budget-cat]{filter:blur(5px);}
 .ctooltip{position:fixed;pointer-events:none;background:var(--surface-3);border:1px solid var(--border-strong);border-radius:7px;padding:8px 11px;font-size:12px;line-height:1.5;box-shadow:0 6px 18px rgba(0,0,0,.22);z-index:200;opacity:0;transition:opacity .08s;max-width:220px;}
 .ctooltip.show{opacity:1;}
 .ctooltip b{font-family:var(--font-mono);}
@@ -265,6 +280,7 @@ table.dt tr:hover td{background:var(--surface-2);}
       <button class="backup-btn" id="btnExport" title="Tải file sao lưu dữ liệu (.csv)">Xuất dữ liệu</button>
       <button class="backup-btn" id="btnImport" title="Nạp lại dữ liệu từ file sao lưu (.csv)">Nhập dữ liệu</button>
       <input type="file" id="fileImport" accept=".csv,text/csv,.json,application/json" hidden>
+      <button class="icon-btn" id="btnPrivacy" title="Ẩn số tiền" aria-label="Ẩn số tiền"></button>
       <button class="icon-btn" id="btnTheme" title="Đổi giao diện sáng/tối" aria-label="Đổi giao diện sáng/tối"></button>
     </div>
   </div>
@@ -485,8 +501,9 @@ function slug(s){
   return s.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/đ/g,"d").replace(/Đ/g,"D")
     .toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
 }
-function fmtVND(n){ n = Math.round(n||0); return n.toLocaleString("en-US")+" ₫"; }
-function fmtVNDSigned(n){ n=Math.round(n||0); return (n<0?"-":"")+Math.abs(n).toLocaleString("en-US")+" ₫"; }
+var MONEY_MASK = "•••••• ₫";
+function fmtVND(n){ if(state.privacyMode) return MONEY_MASK; n = Math.round(n||0); return n.toLocaleString("en-US")+" ₫"; }
+function fmtVNDSigned(n){ if(state.privacyMode) return MONEY_MASK; n=Math.round(n||0); return (n<0?"-":"")+Math.abs(n).toLocaleString("en-US")+" ₫"; }
 function fmtPct(x){ if(x==null||!isFinite(x)) return "–"; return (x*100).toFixed(1)+"%"; }
 function todayISO(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
@@ -497,7 +514,8 @@ var state = {
   month: today.getMonth()+1, year: today.getFullYear(),
   tx: [], budgets: {}, investChannels: [], assets: [], snapshots: [],
   settings: { investTargetPct: 0.1, sheetWebhookUrl: "" },
-  activeTab: "dashboard", dbMode: "local"
+  activeTab: "dashboard", dbMode: "local",
+  privacyMode: (function(){ try{ return localStorage.getItem("sotc_privacy_v1")==="1"; }catch(e){ return false; } })()
 };
 var unsubs = [];
 
@@ -515,6 +533,35 @@ function initTheme(){
     var next = effTheme()==="dark" ? "light":"dark";
     try{ localStorage.setItem(THEME_KEY,next); }catch(e){}
     applyTheme(next); renderAll();
+  });
+}
+
+/* ================= PRIVACY (ẩn/hiện số tiền) =================
+   Thay toàn bộ số tiền hiển thị bằng dấu chấm (fmtVND/fmtVNDSigned/
+   fmtCompact đều kiểm tra state.privacyMode — xem định nghĩa của chúng),
+   và làm mờ hình dạng biểu đồ (CSS .privacy-on, xem phần CHART ở trên) —
+   để mở app ở nơi công cộng mà không lộ số liệu. Trạng thái bật/tắt lưu
+   riêng trên máy này (localStorage), không đồng bộ qua Google Sheet vì đây
+   chỉ là tùy chọn hiển thị, không phải dữ liệu giao dịch. */
+var PRIVACY_KEY = "sotc_privacy_v1";
+var EYE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+var EYE_OFF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.3 20.3 0 0 1 5.06-6.06"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a20.3 20.3 0 0 1-4.09 5.02"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+function applyPrivacyClass(){ document.body.classList.toggle("privacy-on", !!state.privacyMode); }
+function renderPrivacyIcon(){
+  var b=document.getElementById("btnPrivacy"); if(!b) return;
+  // Icon thể hiện HÀNH ĐỘNG khi bấm (giống nút đổi giao diện sáng/tối):
+  // đang hiện số tiền → icon mắt gạch chéo (bấm để ẩn); đang ẩn → icon
+  // mắt thường (bấm để hiện lại).
+  b.innerHTML = state.privacyMode ? EYE : EYE_OFF;
+  b.title = state.privacyMode ? "Hiện số tiền" : "Ẩn số tiền (bảo mật khi ở nơi công cộng)";
+  b.setAttribute("aria-label", b.title);
+}
+function initPrivacyToggle(){
+  applyPrivacyClass(); renderPrivacyIcon();
+  document.getElementById("btnPrivacy").addEventListener("click", function(){
+    state.privacyMode = !state.privacyMode;
+    try{ localStorage.setItem(PRIVACY_KEY, state.privacyMode?"1":"0"); }catch(e){}
+    applyPrivacyClass(); renderPrivacyIcon(); renderAll();
   });
 }
 
@@ -1635,6 +1682,7 @@ var Charts = {};
   };
 
   function fmtCompact(v){
+    if(state.privacyMode) return "•••";
     var av=Math.abs(v);
     if(av>=1e9) return (v/1e9).toFixed(1)+"B";
     if(av>=1e6) return (v/1e6).toFixed(1)+"M";
@@ -1660,7 +1708,7 @@ function renderAll(){
 
 /* ================= BOOT ================= */
 function boot(){
-  initTheme(); initPeriodPicker(); initTxForm(); initBudgetTab(); initInvestTab(); initAssetsTab(); initTabs(); initBackup(); initSheetBridge();
+  initTheme(); initPrivacyToggle(); initPeriodPicker(); initTxForm(); initBudgetTab(); initInvestTab(); initAssetsTab(); initTabs(); initBackup(); initSheetBridge();
   initDB();
 }
 if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", boot); else boot();
