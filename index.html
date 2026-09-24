@@ -383,12 +383,12 @@ table.dt tr:hover td{background:var(--surface-2);}
       <p class="note-inline" id="sheetBridgeStatus" style="margin-top:8px;"></p>
       <div class="sync-toolbar">
         <button type="button" class="backup-btn" id="btnClearToken">Xóa token đã lưu</button>
-        <button type="button" class="backup-btn" id="btnDedupeTx" title="Dùng khi thấy giao dịch bị nhân đôi sau lần đầu bật đồng bộ 2 chiều">Dọn trùng lặp</button>
+        <button type="button" class="backup-btn" id="btnDedupeTx" title="Dùng khi thấy giao dịch hoặc tài sản bị nhân đôi sau lần đầu bật đồng bộ 2 chiều">Dọn trùng lặp</button>
         <span class="note-inline" id="sheetSyncNowStatus"></span>
       </div>
       <details class="sync-help">
         <summary>Cách hoạt động &amp; hướng dẫn triển khai</summary>
-        <p>Giao dịch thêm/xóa ở app tự ghi sang Google Sheet, và ngược lại — sửa trực tiếp trên Sheet cũng tự về app (kiểm tra lại mỗi ~15–20 giây, và ngay khi bạn mở lại app). Cần triển khai kèm file <code>GhiSoGiaoDich.gs</code> bản mới nhất (Phiên bản 6).</p>
+        <p>Giao dịch và tài sản thêm/sửa/xóa ở app tự ghi sang Google Sheet (giao dịch → "Sổ Giao Dịch", tài sản → "Tổng Tài Sản"), và ngược lại — sửa trực tiếp trên Sheet cũng tự về app (kiểm tra lại mỗi ~15–20 giây, và ngay khi bạn mở lại app). Cần triển khai kèm file <code>GhiSoGiaoDich.gs</code> bản mới nhất (Phiên bản 7 — bản cũ hơn chỉ đồng bộ được giao dịch, chưa đồng bộ tài sản).</p>
         <p>Token chỉ có tác dụng như "mật khẩu" giữa app và Apps Script, để người lạ không thể tự đoán link Web App rồi chỉnh sửa dữ liệu Sheet của bạn — muốn đồng bộ được, họ phải có cả URL lẫn đúng Token (đặt ở đầu file <code>GhiSoGiaoDich.gs</code>, biến <code>SYNC_TOKEN</code>). Ô Token bí mật ở trên luôn ẩn ký tự và không hiện lại giá trị đã lưu trên màn hình sau khi Lưu — nếu quên, mở lại giá trị <code>SYNC_TOKEN</code> trong Apps Script rồi dán lại vào đây.</p>
       </details>
     </div>
@@ -1055,12 +1055,15 @@ function initSheetBridge(){
   if(syncNowBtn) syncNowBtn.addEventListener("click", function(){ pullFromSheet(true); });
   var dedupeBtn = document.getElementById("btnDedupeTx");
   if(dedupeBtn) dedupeBtn.addEventListener("click", async function(){
-    var groups = findDuplicateTxGroups();
-    if(groups.length===0){ setSyncNowMsg("Không tìm thấy giao dịch trùng lặp nào.", false); return; }
-    var extra = groups.reduce(function(s,g){ return s+g.length-1; }, 0);
-    if(!confirm("Tìm thấy "+groups.length+" nhóm giao dịch trùng lặp ("+extra+" dòng thừa cần xóa, mỗi nhóm giữ lại đúng 1 giao dịch). Xóa các bản trùng ngay bây giờ? Không thể hoàn tác.")) return;
-    var res = await dedupeDuplicateTx();
-    setSyncNowMsg("Đã xóa "+res.removed+" giao dịch trùng lặp trong "+res.groups+" nhóm.", false);
+    var txGroups = findDuplicateTxGroups();
+    var assetGroups = findDuplicateAssetGroups();
+    if(txGroups.length===0 && assetGroups.length===0){ setSyncNowMsg("Không tìm thấy giao dịch hay tài sản trùng lặp nào.", false); return; }
+    var extraTx = txGroups.reduce(function(s,g){ return s+g.length-1; }, 0);
+    var extraAsset = assetGroups.reduce(function(s,g){ return s+g.length-1; }, 0);
+    if(!confirm("Tìm thấy "+txGroups.length+" nhóm giao dịch trùng ("+extraTx+" dòng thừa) và "+assetGroups.length+" nhóm tài sản trùng ("+extraAsset+" dòng thừa), mỗi nhóm giữ lại đúng 1 bản. Xóa các bản trùng ngay bây giờ? Không thể hoàn tác.")) return;
+    var res1 = await dedupeDuplicateTx();
+    var res2 = await dedupeDuplicateAssets();
+    setSyncNowMsg("Đã xóa "+res1.removed+" giao dịch trùng ("+res1.groups+" nhóm) và "+res2.removed+" tài sản trùng ("+res2.groups+" nhóm).", false);
   });
 }
 
@@ -1179,6 +1182,12 @@ async function pullFromSheet(manual){
     }
     cleanupPending();
     await reconcileFromSheet(data.items, url);
+    // Đồng bộ tài sản dùng CHUNG một lượt đồng bộ định kỳ này (đỡ tốn thêm
+    // request/timer riêng) nhưng lỗi ở đây không được làm hỏng phần giao
+    // dịch phía trên — ví dụ Apps Script đang triển khai bản cũ hơn Phiên
+    // bản 7 (chưa có điểm cuối assetSet/listAssets) thì bỏ qua trong im lặng,
+    // giao dịch vẫn đồng bộ bình thường.
+    try{ await pullAssetsFromSheet(url); }catch(e){}
     markLastSync();
     if(manual) setSyncNowMsg("Đã đồng bộ lúc " + new Date().toLocaleTimeString("vi-VN") + ".", false);
   }catch(e){
@@ -1254,6 +1263,145 @@ async function reconcileFromSheet(items, url){
     try{ await col.doc(toDelete[k]).delete(); delete syncedIds[toDelete[k]]; }catch(e){}
   }
   saveSyncedIds();
+}
+
+/* ---- TÀI SẢN ↔ Sheet "Tổng Tài Sản" (đồng bộ 2 chiều, cùng cơ chế như Sổ
+   Giao Dịch ở trên nhưng dùng bộ nhớ/hàng đợi RIÊNG — asset id và tx id
+   không lẫn vào nhau, và một tài sản bị xóa trực tiếp trên Sheet không được
+   phép ảnh hưởng gì tới việc dò xóa giao dịch, và ngược lại). Yêu cầu bản
+   GhiSoGiaoDich.gs Phiên bản 7 trở lên (có các điểm cuối assetSet/
+   assetDelete/listAssets/tagAsset). */
+var ASSET_SHEET_SYNCED_KEY = "sotc_sheet_asset_synced_ids_v1";
+var ASSET_SHEET_UNSYNCED_KEY = "sotc_sheet_asset_unsynced_ids_v1";
+var assetPendingSync = {}; // id -> {type:"set"|"delete", ts}
+var assetSyncedIds = (function(){ try{ var raw=localStorage.getItem(ASSET_SHEET_SYNCED_KEY); return raw?JSON.parse(raw):{}; }catch(e){ return {}; } })();
+var assetUnsyncedIds = (function(){ try{ var raw=localStorage.getItem(ASSET_SHEET_UNSYNCED_KEY); return raw?JSON.parse(raw):{}; }catch(e){ return {}; } })();
+
+function markAssetPending(id, type){ if(id) assetPendingSync[id] = { type:type, ts:Date.now() }; }
+function cleanupAssetPending(){
+  var now=Date.now();
+  Object.keys(assetPendingSync).forEach(function(id){ if(now-assetPendingSync[id].ts > SHEET_GRACE_MS) delete assetPendingSync[id]; });
+}
+function saveAssetSyncedIds(){ try{ localStorage.setItem(ASSET_SHEET_SYNCED_KEY, JSON.stringify(assetSyncedIds)); }catch(e){} }
+function saveAssetUnsyncedIds(){ try{ localStorage.setItem(ASSET_SHEET_UNSYNCED_KEY, JSON.stringify(assetUnsyncedIds)); }catch(e){} }
+function toAssetDoc(it){ return { type: it.type||"", name: it.name||"", balance: Number(it.balance)||0, note: it.note||"" }; }
+function sameAsset(a,b){ return a.type===b.type && a.name===b.name && Number(a.balance)===Number(b.balance) && (a.note||"")===(b.note||""); }
+
+/* App → Sheet: gọi ngay sau khi thêm mới HOẶC sửa số dư/tên/loại/ghi chú một
+   tài sản đã có — một hành động "assetSet" duy nhất ở phía Apps Script lo cả
+   2 trường hợp (thêm dòng mới nếu id chưa có, ghi đè dòng cũ nếu đã có). */
+function pushAssetToSheet(asset){
+  var url = state.settings.sheetWebhookUrl;
+  if(!url || !asset._id) return;
+  markAssetPending(asset._id, "set");
+  assetUnsyncedIds[asset._id] = Date.now();
+  saveAssetUnsyncedIds();
+  var payload = { action:"assetSet", id:asset._id, type:asset.type, name:asset.name, balance:asset.balance, note:asset.note||"", token: state.settings.sheetToken||"" };
+  fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(payload)}).catch(function(){ /* lượt đồng bộ định kỳ sẽ tự thử lại nếu cần */ });
+}
+function pushAssetDeleteToSheet(id){
+  var url = state.settings.sheetWebhookUrl;
+  if(!url || !id) return;
+  markAssetPending(id, "delete");
+  delete assetUnsyncedIds[id]; saveAssetUnsyncedIds();
+  fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"assetDelete", id:id, token: state.settings.sheetToken||""})}).catch(function(){});
+}
+
+/* Sheet → App (kéo về, cùng chu kỳ ~15–20 giây với Sổ Giao Dịch — xem
+   pullFromSheet() gọi hàm này ngay sau khi đồng bộ xong phần giao dịch). */
+async function pullAssetsFromSheet(url){
+  var res = await fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"listAssets", token: state.settings.sheetToken||""})});
+  var data=null; try{ data = JSON.parse(await res.text()); }catch(e){}
+  if(!data || data.authError || data.status!=="ok" || !Array.isArray(data.items)) return; // lỗi token/kết nối đã được báo ở lượt kéo giao dịch rồi, khỏi báo trùng
+  cleanupAssetPending();
+  await reconcileAssetsFromSheet(data.items, url);
+}
+
+async function reconcileAssetsFromSheet(items, url){
+  var col = state.db.collection("assets");
+  var sheetIds = {}, untagged = [];
+  items.forEach(function(it){ if(it.id) sheetIds[it.id]=it; else untagged.push(it); });
+
+  // Dòng tài sản bạn tự gõ tay trực tiếp trên Sheet (chưa có ID) — tạo ID
+  // mới, gắn ngược lên đúng dòng đó, rồi coi như một tài sản bình thường.
+  for(var i=0;i<untagged.length;i++){
+    var it = untagged[i];
+    var newId = "sheetasset"+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+    try{
+      var res = await fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"tagAsset", row:it.row, id:newId, type:it.type, balance:it.balance, token: state.settings.sheetToken||""})});
+      var out=null; try{ out = JSON.parse(await res.text()); }catch(e){}
+      var finalId = (out && out.skipped && out.id) ? out.id : newId;
+      markAssetPending(finalId, "set");
+      sheetIds[finalId] = it;
+    }catch(e){ /* thử gắn lại ở lượt đồng bộ sau */ }
+  }
+
+  var localById = {};
+  state.assets.forEach(function(a){ if(a._id) localById[a._id]=a; });
+
+  var idKeys = Object.keys(sheetIds);
+  for(var j=0;j<idKeys.length;j++){
+    var id = idKeys[j];
+    assetSyncedIds[id] = true;
+    delete assetUnsyncedIds[id];
+    if(assetPendingSync[id] && assetPendingSync[id].type==="delete") continue; // vừa xóa ở app, đợi Sheet ghi nhận
+    var incoming = toAssetDoc(sheetIds[id]);
+    var existing = localById[id];
+    if(existing && sameAsset(existing, incoming)) continue; // không đổi gì — tránh ghi/re-render thừa (và tránh phá edit đang dở, xem renderAll())
+    try{ await col.doc(id).set(incoming); }catch(e){}
+  }
+
+  Object.keys(assetUnsyncedIds).forEach(function(id){
+    if(sheetIds[id]){ delete assetUnsyncedIds[id]; return; }
+    if(assetPendingSync[id]) return;
+    var a = localById[id];
+    if(!a){ delete assetUnsyncedIds[id]; return; }
+    pushAssetToSheet(a);
+  });
+  saveAssetUnsyncedIds();
+
+  // Tài sản từng được xác nhận có trong Sheet (assetSyncedIds) nhưng giờ
+  // biến mất khỏi danh sách Sheet trả về → bị xóa trực tiếp trên Sheet, xóa
+  // theo trong app. Tài sản chưa từng thấy trong Sheet (dữ liệu có sẵn trước
+  // khi bật đồng bộ) không bao giờ bị đụng tới.
+  var toDelete = [];
+  state.assets.forEach(function(a){
+    if(!a._id || sheetIds[a._id] || !assetSyncedIds[a._id] || assetPendingSync[a._id]) return;
+    toDelete.push(a._id);
+  });
+  for(var k=0;k<toDelete.length;k++){
+    try{ await col.doc(toDelete[k]).delete(); delete assetSyncedIds[toDelete[k]]; }catch(e){}
+  }
+  saveAssetSyncedIds();
+}
+
+/* ---- Dọn trùng lặp tài sản (cùng lý do với dedupeDuplicateTx — xảy ra chủ
+   yếu ở lần đầu bật đồng bộ, khi các tài sản có sẵn trong Sheet lẫn trong
+   app cùng lúc được ghép thành 2 bản giống hệt nhau) ---- */
+function findDuplicateAssetGroups(){
+  var groups = {};
+  state.assets.forEach(function(a){
+    if(!a._id) return;
+    var key = [a.type||"", a.name||"", Number(a.balance)||0].join("|");
+    (groups[key] = groups[key] || []).push(a);
+  });
+  return Object.keys(groups).map(function(k){ return groups[k]; }).filter(function(g){ return g.length>1; });
+}
+async function dedupeDuplicateAssets(){
+  var groups = findDuplicateAssetGroups();
+  if(groups.length===0 || !state.db) return { removed:0, groups:0 };
+  var col = state.db.collection("assets");
+  var removed = 0;
+  for(var i=0;i<groups.length;i++){
+    var g = groups[i];
+    var keepIdx = g.findIndex(function(a){ return assetSyncedIds[a._id]; });
+    if(keepIdx===-1) keepIdx = 0;
+    for(var j=0;j<g.length;j++){
+      if(j===keepIdx) continue;
+      try{ await col.doc(g[j]._id).delete(); removed++; }catch(e){}
+    }
+  }
+  return { removed:removed, groups:groups.length };
 }
 
 /* ================= DATA HELPERS ================= */
@@ -1593,8 +1741,15 @@ function initAssetsTab(){
     var bal=+document.getElementById("asBal").value;
     var doc={ type: sel.value, name: document.getElementById("asName").value.trim(), balance: bal||0, note: document.getElementById("asNote").value.trim() };
     if(!doc.name) return;
-    if(state.db){ try{ await state.db.collection("assets").add(doc); }catch(err){} }
-    else { doc._id="local-"+Date.now(); state.assets.push(doc); renderAll(); }
+    if(state.db){
+      // Cần lấy lại _id của tài sản vừa thêm (cả DB thật lẫn bản giả lập cục
+      // bộ đều trả về docRef có .id) — để đồng bộ đẩy đúng dòng này sang
+      // Sheet, và tìm lại đúng dòng đó nếu sau này xóa/sửa.
+      try{ var ref = await state.db.collection("assets").add(doc); doc._id = ref && ref.id; }catch(err){}
+    } else {
+      doc._id="local-"+Date.now(); state.assets.push(doc); renderAll();
+    }
+    if(state.dbMode==="local" && doc._id) pushAssetToSheet(doc);
     document.getElementById("asName").value=""; document.getElementById("asBal").value=""; document.getElementById("asNote").value="";
   });
   document.getElementById("assetsTable").addEventListener("click", async function(e){
@@ -1615,6 +1770,7 @@ function initAssetsTab(){
     if(!confirm("Xóa tài sản này?")) return;
     if(state.db){ try{ await state.db.collection("assets").doc(id).delete(); }catch(err){} }
     else { state.assets=state.assets.filter(function(a){return a._id!==id;}); renderAll(); }
+    if(state.dbMode==="local") pushAssetDeleteToSheet(id);
   });
   // Sửa số dư một tài sản đã có (ví dụ cập nhật lại số dư tài khoản ngân
   // hàng mỗi tháng) — gõ số mới rồi rời khỏi ô (Tab/click ra ngoài) hoặc bấm
@@ -1630,6 +1786,7 @@ function initAssetsTab(){
     var doc={ type:a.type, name:a.name, balance:val, note:a.note||"" };
     if(state.db){ try{ await state.db.collection("assets").doc(id).set(doc); }catch(err){} }
     else { a.balance=val; renderAll(); }
+    if(state.dbMode==="local") pushAssetToSheet(Object.assign({_id:id}, doc));
   });
   document.getElementById("assetsTable").addEventListener("keydown", function(e){
     if(!e.target.closest("[data-asset-balance]")) return;
@@ -1853,7 +2010,16 @@ function renderAll(){
   else if(state.activeTab==="tx"){ renderTxTable(); }
   else if(state.activeTab==="budget"){ renderBudgetMeters(); renderBudgetHistChart(); renderMonthCompare(); }
   else if(state.activeTab==="invest"){ renderInvestTab(); }
-  else if(state.activeTab==="assets"){ renderAssetsTab(); }
+  // Khi đang sửa dở số dư một tài sản (editingAssetId khác null), KHÔNG vẽ
+  // lại bảng tài sản ở đây — renderAll() có thể bị gọi bởi một thay đổi dữ
+  // liệu chẳng liên quan gì (ví dụ đồng bộ Google Sheet định kỳ ghi một giao
+  // dịch mới), và local DB phát sự kiện "localdb:change" dùng CHUNG cho MỌI
+  // collection chứ không tách riêng theo bảng — nếu cứ vẽ lại, ô nhập đang
+  // gõ dở sẽ bị thay bằng phần tử <input> mới (mất focus + mất số vừa gõ),
+  // trông như app "tự lưu" rồi khoá không cho gõ tiếp. Khi người dùng tự
+  // bấm lưu/hủy, các hàm đó đã tự gọi renderAssetsTab() trực tiếp rồi, nên
+  // bỏ qua ở đây không làm mất cập nhật gì cả.
+  else if(state.activeTab==="assets"){ if(!editingAssetId) renderAssetsTab(); }
 }
 
 /* ================= BOOT ================= */
