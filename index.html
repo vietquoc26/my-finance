@@ -267,6 +267,17 @@ table.dt tr:hover td{background:var(--surface-2);}
 .btn-secondary:hover{background:var(--surface-2);}
 .btn-google{background:var(--surface);border:1px solid var(--border-strong);color:var(--text);}
 .btn-google:hover{background:var(--surface-2);}
+.modal-overlay{position:fixed;inset:0;background:rgba(10,16,12,.5);display:flex;align-items:center;justify-content:center;z-index:300;padding:20px;}
+.modal-overlay[hidden]{display:none;}
+.modal-card{background:var(--surface);border-radius:var(--radius-lg);padding:22px;max-width:340px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.28);}
+.modal-card h3{font-size:15px;font-weight:700;margin:0 0 5px;color:var(--text);}
+.modal-card p{font-size:12.5px;color:var(--text-muted);margin:0 0 14px;line-height:1.5;}
+.modal-card .field{margin-bottom:10px;}
+.modal-actions{display:flex;gap:8px;margin-top:6px;}
+.modal-actions .btn{flex:1;justify-content:center;}
+.modal-err{font-size:12px;color:var(--critical);min-height:15px;margin:-2px 0 8px;}
+.modal-forgot{font-size:11.5px;color:var(--text-faint);text-decoration:underline;cursor:pointer;background:none;border:none;padding:0;margin-top:12px;display:block;}
+.modal-forgot:hover{color:var(--text-muted);}
 .sync-hint{display:flex;gap:9px;align-items:flex-start;background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--radius-lg);padding:12px 15px;font-size:12.5px;color:var(--text);}
 .sync-hint svg{width:16px;height:16px;flex:none;color:var(--accent);margin-top:1px;}
 .sync-hint code{background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-family:var(--font-mono);font-size:11.5px;}
@@ -311,6 +322,24 @@ table.dt tr:hover td{background:var(--surface-2);}
       <button class="icon-btn" id="btnPrivacy" title="Ẩn số tiền" aria-label="Ẩn số tiền"></button>
       <button class="icon-btn" id="btnTheme" title="Đổi giao diện sáng/tối" aria-label="Đổi giao diện sáng/tối"></button>
     </div>
+  </div>
+</div>
+
+<!-- Hộp thoại nhập/đặt mã PIN — chặn trước khi được BẤM HIỆN LẠI số tiền
+     (ẩn đi thì luôn được, không cần PIN). Lần đầu dùng tính năng này sẽ bắt
+     đặt mã PIN mới thay vì nhập mã có sẵn. -->
+<div class="modal-overlay" id="pinModal" hidden>
+  <div class="modal-card">
+    <h3 id="pinModalTitle">Nhập mã PIN</h3>
+    <p id="pinModalDesc">Nhập mã PIN để hiện số tiền.</p>
+    <div class="field"><input type="password" inputmode="numeric" autocomplete="off" id="pinInput1" placeholder="Mã PIN"></div>
+    <div class="field" id="pinField2" hidden><input type="password" inputmode="numeric" autocomplete="off" id="pinInput2" placeholder="Nhập lại mã PIN"></div>
+    <div class="modal-err" id="pinModalErr"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="btnPinCancel">Hủy</button>
+      <button type="button" class="btn btn-primary" id="btnPinConfirm">Xác nhận</button>
+    </div>
+    <button type="button" class="modal-forgot" id="btnPinForgot" hidden>Quên mã PIN? Đặt lại</button>
   </div>
 </div>
 
@@ -613,10 +642,120 @@ function renderPrivacyIcon(){
 }
 function initPrivacyToggle(){
   applyPrivacyClass(); renderPrivacyIcon();
-  document.getElementById("btnPrivacy").addEventListener("click", function(){
-    state.privacyMode = !state.privacyMode;
-    try{ localStorage.setItem(PRIVACY_KEY, state.privacyMode?"1":"0"); }catch(e){}
+  document.getElementById("btnPrivacy").addEventListener("click", async function(){
+    // Ẩn đi thì luôn cho làm ngay — không cần PIN (giấu nhanh khi có người
+    // nhìn qua vai mới là mục đích chính). Chỉ HIỆN LẠI mới cần đúng mã PIN
+    // (hoặc đặt mã mới nếu đây là lần đầu dùng tính năng khóa này).
+    if(!state.privacyMode){
+      state.privacyMode = true;
+      try{ localStorage.setItem(PRIVACY_KEY, "1"); }catch(e){}
+      applyPrivacyClass(); renderPrivacyIcon(); renderAll();
+      return;
+    }
+    var ok = await requestPin();
+    if(!ok) return;
+    state.privacyMode = false;
+    try{ localStorage.setItem(PRIVACY_KEY, "0"); }catch(e){}
     applyPrivacyClass(); renderPrivacyIcon(); renderAll();
+  });
+}
+
+/* ---- Khóa PIN cho nút hiện số tiền ----
+   Mã PIN không lưu ở dạng chữ thô — chỉ lưu bản băm (hash) SHA-256 (kèm
+   "muối" cố định theo app) trong localStorage, nên đọc thẳng localStorage
+   cũng không suy ngược ra được mã gốc. Đây KHÔNG phải khóa chống được người
+   rành kỹ thuật (họ vẫn có thể sửa state qua console) — mục đích chỉ là
+   chặn người lướt qua/mượn máy xem lén số tiền, giống khóa màn hình ứng
+   dụng ngân hàng, không phải mã hóa dữ liệu. */
+var PRIVACY_PIN_KEY = "sotc_privacy_pin_v1";
+async function sha256Hex(text){
+  var s = "sotc-privacy-pin::"+text;
+  if(window.crypto && window.crypto.subtle && window.crypto.subtle.digest){
+    try{
+      var buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+      return Array.prototype.map.call(new Uint8Array(buf), function(b){ return b.toString(16).padStart(2,"0"); }).join("");
+    }catch(e){ /* rơi xuống fallback bên dưới nếu môi trường chặn Web Crypto */ }
+  }
+  // Fallback không phải mật mã học, chỉ dùng khi trình duyệt/ngữ cảnh không
+  // có Web Crypto (rất hiếm) — vẫn đủ để chặn xem lướt qua.
+  var h=0; for(var i=0;i<s.length;i++){ h=((h<<5)-h+s.charCodeAt(i))|0; }
+  return "fb"+(h>>>0).toString(16);
+}
+function getStoredPinHash(){ try{ return localStorage.getItem(PRIVACY_PIN_KEY); }catch(e){ return null; } }
+function setStoredPinHash(h){ try{ if(h) localStorage.setItem(PRIVACY_PIN_KEY, h); else localStorage.removeItem(PRIVACY_PIN_KEY); }catch(e){} }
+function setPinErr(msg){ document.getElementById("pinModalErr").textContent = msg||""; }
+function setupPinModalUI(mode){
+  var modal=document.getElementById("pinModal");
+  modal.dataset.mode = mode;
+  var title=document.getElementById("pinModalTitle"), desc=document.getElementById("pinModalDesc"),
+      f2=document.getElementById("pinField2"), forgot=document.getElementById("btnPinForgot");
+  if(mode==="create"){
+    title.textContent="Đặt mã PIN";
+    desc.textContent="Đặt mã PIN (ít nhất 4 ký tự) để bảo vệ việc hiện số tiền — từ giờ mỗi lần bấm hiện lại sẽ cần đúng mã này.";
+    f2.hidden=false; forgot.hidden=true;
+  } else {
+    title.textContent="Nhập mã PIN";
+    desc.textContent="Nhập mã PIN để hiện số tiền.";
+    f2.hidden=true; forgot.hidden=false;
+  }
+}
+var pinResolve=null;
+function requestPin(){
+  setupPinModalUI(getStoredPinHash() ? "verify" : "create");
+  document.getElementById("pinInput1").value="";
+  document.getElementById("pinInput2").value="";
+  setPinErr("");
+  document.getElementById("pinModal").hidden=false;
+  requestAnimationFrame(function(){ document.getElementById("pinInput1").focus(); });
+  return new Promise(function(resolve){ pinResolve=resolve; });
+}
+function closePinModal(result){
+  document.getElementById("pinModal").hidden=true;
+  if(pinResolve){ var r=pinResolve; pinResolve=null; r(result); }
+}
+async function handlePinConfirm(){
+  var mode=document.getElementById("pinModal").dataset.mode;
+  var p1=document.getElementById("pinInput1").value;
+  if(mode==="create"){
+    var p2=document.getElementById("pinInput2").value;
+    if(!p1 || p1.length<4){ setPinErr("Mã PIN cần ít nhất 4 ký tự."); return; }
+    if(p1!==p2){
+      setPinErr("Hai lần nhập chưa khớp — thử lại.");
+      document.getElementById("pinInput2").value="";
+      document.getElementById("pinInput2").focus();
+      return;
+    }
+    setStoredPinHash(await sha256Hex(p1));
+    closePinModal(true);
+  } else {
+    var stored=getStoredPinHash();
+    var h=await sha256Hex(p1);
+    if(h!==stored){
+      setPinErr("Sai mã PIN.");
+      document.getElementById("pinInput1").value="";
+      document.getElementById("pinInput1").focus();
+      return;
+    }
+    closePinModal(true);
+  }
+}
+function initPinModal(){
+  document.getElementById("btnPinCancel").addEventListener("click", function(){ closePinModal(false); });
+  document.getElementById("btnPinConfirm").addEventListener("click", handlePinConfirm);
+  document.getElementById("pinModal").addEventListener("keydown", function(e){
+    if(e.key==="Enter"){ e.preventDefault(); handlePinConfirm(); }
+    else if(e.key==="Escape"){ closePinModal(false); }
+  });
+  // Quên mã PIN: xác nhận rồi xóa mã cũ và chuyển ngay sang màn hình đặt mã
+  // mới, không cần đóng/mở lại hộp thoại.
+  document.getElementById("btnPinForgot").addEventListener("click", function(){
+    if(!confirm("Đặt lại mã PIN? Mã cũ sẽ không dùng được nữa và bạn cần tạo mã mới ngay sau đây.")) return;
+    setStoredPinHash(null);
+    setupPinModalUI("create");
+    document.getElementById("pinInput1").value="";
+    document.getElementById("pinInput2").value="";
+    setPinErr("");
+    document.getElementById("pinInput1").focus();
   });
 }
 
@@ -2240,7 +2379,7 @@ function renderAll(){
 
 /* ================= BOOT ================= */
 async function boot(){
-  initTheme(); initPrivacyToggle(); initPeriodPicker(); initTxForm(); initBudgetTab(); initInvestTab(); initAssetsTab(); initTabs(); syncTopbarHeight(); initBackup(); initSheetBridge();
+  initTheme(); initPrivacyToggle(); initPinModal(); initPeriodPicker(); initTxForm(); initBudgetTab(); initInvestTab(); initAssetsTab(); initTabs(); syncTopbarHeight(); initBackup(); initSheetBridge();
   await initDB(); // đợi state.db (local/cloud) sẵn sàng trước khi Firebase có thể cần đọc nó để di dời dữ liệu lần đầu
   initFirebaseBridge();
 }
