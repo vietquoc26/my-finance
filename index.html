@@ -196,7 +196,7 @@ body.privacy-on .chart-box:has(.chart-empty)::after{content:"";}
 /* Ô nhập hạn mức ngân sách (VNĐ) vẫn là số thật gõ tay — làm mờ luôn cho
    nhất quán với phần "đã chi" ngay cạnh nó đã bị ẩn bằng dấu chấm. Không
    đụng tới ô % (phân bổ đầu tư, % mục tiêu đầu tư) vì đó không phải số tiền. */
-body.privacy-on input[data-budget-cat],body.privacy-on input[data-asset-balance]{filter:blur(5px);}
+body.privacy-on input[data-budget-cat],body.privacy-on input[data-edit-balance]{filter:blur(5px);}
 .ctooltip{position:fixed;pointer-events:none;background:var(--surface-3);border:1px solid var(--border-strong);border-radius:7px;padding:8px 11px;font-size:12px;line-height:1.5;box-shadow:0 6px 18px rgba(0,0,0,.22);z-index:200;opacity:0;transition:opacity .08s;max-width:220px;}
 .ctooltip.show{opacity:1;}
 .ctooltip b{font-family:var(--font-mono);}
@@ -357,7 +357,7 @@ table.dt tr:hover td{background:var(--surface-2);}
         <div class="field"><label for="txType">Loại</label><select id="txType"></select></div>
         <div class="field"><label for="txCat">Danh mục</label><select id="txCat"></select></div>
         <div class="field"><label for="txNote">Diễn giải</label><input type="text" id="txNote" placeholder="VD: Ăn tối với bạn bè"></div>
-        <div class="field"><label for="txAmt">Số tiền (VNĐ)</label><input type="number" id="txAmt" min="0" step="1000" required placeholder="0"></div>
+        <div class="field"><label for="txAmt">Số tiền (VNĐ)</label><input type="number" id="txAmt" min="0" required placeholder="0"></div>
         <button type="submit" class="btn btn-primary">+ Thêm</button>
       </form>
     </div>
@@ -457,7 +457,7 @@ table.dt tr:hover td{background:var(--surface-2);}
       <form class="form-grid asset" id="assetForm">
         <div class="field"><label for="asType">Loại</label><select id="asType"></select></div>
         <div class="field"><label for="asName">Tên / Nơi lưu trữ</label><input type="text" id="asName" placeholder="VD: Vietcombank" required></div>
-        <div class="field"><label for="asBal">Số dư (VNĐ)</label><input type="number" id="asBal" min="0" step="1000" required></div>
+        <div class="field"><label for="asBal">Số dư (VNĐ)</label><input type="number" id="asBal" min="0" step="1" required></div>
         <div class="field"><label for="asNote">Ghi chú</label><input type="text" id="asNote"></div>
         <button type="submit" class="btn btn-primary">+ Thêm</button>
       </form>
@@ -1753,16 +1753,26 @@ function initAssetsTab(){
     document.getElementById("asName").value=""; document.getElementById("asBal").value=""; document.getElementById("asNote").value="";
   });
   document.getElementById("assetsTable").addEventListener("click", async function(e){
-    // Bấm icon cây bút: chuyển dòng đó sang chế độ sửa (hiện ô nhập, focus
-    // + chọn sẵn toàn bộ số để gõ đè nhanh).
+    // Bấm icon cây bút: chuyển CẢ DÒNG đó sang chế độ sửa toàn bộ thông tin
+    // (Loại, Tên, Số dư, Ghi chú) — có nút Lưu/Hủy rõ ràng, không tự lưu ngầm.
     var editBtn=e.target.closest("[data-edit-asset]");
     if(editBtn){
       editingAssetId = editBtn.getAttribute("data-edit-asset");
       renderAssetsTab();
       requestAnimationFrame(function(){
-        var inp=document.querySelector('[data-asset-balance="'+editingAssetId+'"]');
+        var inp=document.querySelector('[data-edit-name="'+editingAssetId+'"]');
         if(inp){ inp.focus(); inp.select(); }
       });
+      return;
+    }
+    var cancelBtn=e.target.closest("[data-cancel-asset]");
+    if(cancelBtn){
+      editingAssetId=null; renderAssetsTab();
+      return;
+    }
+    var saveBtn=e.target.closest("[data-save-asset]");
+    if(saveBtn){
+      await saveAssetEdit(saveBtn.getAttribute("data-save-asset"));
       return;
     }
     var b=e.target.closest("[data-del-asset]"); if(!b) return;
@@ -1772,38 +1782,29 @@ function initAssetsTab(){
     else { state.assets=state.assets.filter(function(a){return a._id!==id;}); renderAll(); }
     if(state.dbMode==="local") pushAssetDeleteToSheet(id);
   });
-  // Sửa số dư một tài sản đã có (ví dụ cập nhật lại số dư tài khoản ngân
-  // hàng mỗi tháng) — gõ số mới rồi rời khỏi ô (Tab/click ra ngoài) hoặc bấm
-  // Enter là lưu ngay, không cần xóa rồi thêm lại như trước.
-  document.getElementById("assetsTable").addEventListener("change", async function(e){
-    var inp=e.target.closest("[data-asset-balance]"); if(!inp) return;
-    var id=inp.getAttribute("data-asset-balance");
-    editingAssetId = null; // đóng chế độ sửa dù lưu thành công hay không
+  // Lưu (đọc 4 ô Loại/Tên/Số dư/Ghi chú của dòng đang sửa) — dùng chung cho
+  // cả nút "Lưu" lẫn phím Enter bên dưới.
+  async function saveAssetEdit(id){
+    var typeSel=document.querySelector('[data-edit-type="'+id+'"]');
+    var nameInp=document.querySelector('[data-edit-name="'+id+'"]');
+    var balInp=document.querySelector('[data-edit-balance="'+id+'"]');
+    var noteInp=document.querySelector('[data-edit-note="'+id+'"]');
+    if(!typeSel||!nameInp||!balInp||!noteInp) return;
+    var name=nameInp.value.trim();
+    if(!name){ nameInp.focus(); return; } // tên không được để trống — không lưu, không đóng ô sửa
     var a=state.assets.find(function(x){ return x._id===id; });
     if(!a) return;
-    var val=+inp.value||0;
-    if(val===(+a.balance||0)){ renderAssetsTab(); return; } // không đổi gì — khỏi ghi thừa
-    var doc={ type:a.type, name:a.name, balance:val, note:a.note||"" };
+    var doc={ type: typeSel.value, name: name, balance: +balInp.value||0, note: noteInp.value.trim() };
+    editingAssetId=null;
     if(state.db){ try{ await state.db.collection("assets").doc(id).set(doc); }catch(err){} }
-    else { a.balance=val; renderAll(); }
+    else { a.type=doc.type; a.name=doc.name; a.balance=doc.balance; a.note=doc.note; renderAll(); }
     if(state.dbMode==="local") pushAssetToSheet(Object.assign({_id:id}, doc));
-  });
+  }
   document.getElementById("assetsTable").addEventListener("keydown", function(e){
-    if(!e.target.closest("[data-asset-balance]")) return;
-    if(e.key==="Enter") e.target.blur();
+    var row=e.target.closest("[data-asset-edit-row]"); if(!row) return;
+    if(e.key==="Enter" && e.target.tagName!=="SELECT"){ e.preventDefault(); saveAssetEdit(row.getAttribute("data-asset-edit-row")); }
     else if(e.key==="Escape"){ editingAssetId=null; renderAssetsTab(); }
   });
-  // Bấm ra ngoài ô nhập mà không đổi giá trị thì cũng đóng chế độ sửa lại
-  // (sự kiện change chỉ nổ khi giá trị thực sự thay đổi) — blur không nổi
-  // bọt (bubble) nên phải bắt ở pha capture.
-  document.getElementById("assetsTable").addEventListener("blur", function(e){
-    var inp=e.target.closest && e.target.closest("[data-asset-balance]");
-    if(!inp) return;
-    var id=inp.getAttribute("data-asset-balance");
-    setTimeout(function(){
-      if(editingAssetId===id){ editingAssetId=null; renderAssetsTab(); }
-    }, 120);
-  }, true);
   document.getElementById("btnSnapshot").addEventListener("click", async function(){
     var total = state.assets.reduce(function(s,a){ return s+(+a.balance||0); },0);
     var doc={ month: state.month, year: state.year, total: total, note: "Lưu thủ công từ web app" };
@@ -1821,12 +1822,19 @@ function renderAssetsTab(){
   ].map(function(t){ return '<div class="kpi"><span class="l">'+t[0]+'</span><span class="v tnum">'+t[1]+'</span></div>'; }).join("");
 
   var rows = state.assets.slice().sort(function(a,b){ return (b.balance||0)-(a.balance||0); }).map(function(a){
-    var balCell = a._id===editingAssetId
-      ? '<input class="budget-input tnum" style="text-align:right;" type="number" step="1000" data-asset-balance="'+a._id+'" value="'+(+a.balance||0)+'" title="Sửa số dư">'
-      : '<span class="balance-cell"><span class="tnum">'+fmtVND(+a.balance||0)+'</span><button type="button" class="edit-icon-btn" data-edit-asset="'+a._id+'" title="Sửa số dư" aria-label="Sửa số dư">'+PENCIL+'</button></span>';
+    if(a._id===editingAssetId){
+      var typeOpts = ASSET_TYPES.map(function(t){ return '<option value="'+esc(t)+'"'+(t===a.type?' selected':'')+'>'+esc(t)+'</option>'; }).join("");
+      return '<tr data-asset-edit-row="'+a._id+'">'+
+        '<td><select class="budget-input" data-edit-type="'+a._id+'">'+typeOpts+'</select></td>'+
+        '<td><input class="budget-input" type="text" data-edit-name="'+a._id+'" value="'+esc(a.name)+'" placeholder="Tên / nơi lưu trữ"></td>'+
+        '<td class="tnum" style="text-align:right;"><input class="budget-input tnum" style="text-align:right;" type="number" step="1" data-edit-balance="'+a._id+'" value="'+(+a.balance||0)+'"></td>'+
+        '<td><input class="budget-input" type="text" data-edit-note="'+a._id+'" value="'+esc(a.note||"")+'" placeholder="Ghi chú"></td>'+
+        '<td style="white-space:nowrap;"><button type="button" class="rowbtn" data-save-asset="'+a._id+'" title="Lưu">Lưu</button> <button type="button" class="rowbtn" data-cancel-asset="'+a._id+'" title="Hủy">Hủy</button></td></tr>';
+    }
     return '<tr><td>'+esc(a.type)+'</td><td>'+esc(a.name)+'</td>'+
-      '<td class="tnum" style="text-align:right;">'+balCell+'</td>'+
-      '<td>'+esc(a.note||"–")+'</td><td><button class="rowbtn" data-del-asset="'+a._id+'">Xóa</button></td></tr>';
+      '<td class="tnum" style="text-align:right;">'+fmtVND(+a.balance||0)+'</td>'+
+      '<td>'+esc(a.note||"–")+'</td>'+
+      '<td style="white-space:nowrap;"><button type="button" class="edit-icon-btn" data-edit-asset="'+a._id+'" title="Sửa" aria-label="Sửa">'+PENCIL+'</button> <button class="rowbtn" data-del-asset="'+a._id+'">Xóa</button></td></tr>';
   }).join("");
   document.getElementById("assetsTable").innerHTML = state.assets.length===0
     ? '<tr><td class="empty-note">Chưa có tài sản nào.</td></tr>'
