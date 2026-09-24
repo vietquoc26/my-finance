@@ -63,8 +63,13 @@
   color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:border-box;}
-html{overflow-x:hidden;}
-body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:max(16px,calc((100vw - 1180px)/2));overflow-x:hidden;}
+/* overflow-x:hidden ở đây từng làm hỏng position:sticky của .tabbar (đặt hidden
+   trên 1 trục khiến trình duyệt tự đổi trục kia thành auto, tạo thành một
+   "scroll container" ẩn khiến sticky tính sai) — dùng overflow-x:clip thay thế
+   (chặn tràn ngang y hệt nhưng không đụng tới trục dọc); khai báo hidden trước
+   để trình duyệt cũ không hiểu clip vẫn còn overflow-x:hidden như trước. */
+html{overflow-x:hidden;overflow-x:clip;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:max(16px,calc((100vw - 1180px)/2));overflow-x:hidden;overflow-x:clip;}
 h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance;}
 p{margin:0;}
 button{font-family:inherit;cursor:pointer;}
@@ -100,6 +105,14 @@ button{font-family:inherit;cursor:pointer;}
 .tabbtn{flex:0 0 auto;border:1px solid transparent;background:transparent;color:var(--text-muted);font-weight:600;font-size:13.5px;padding:9px 15px;border-radius:999px;white-space:nowrap;}
 .tabbtn:hover{color:var(--text);}
 .tabbtn.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);}
+/* Cố định hàng tab ngay dưới thanh trên cùng khi cuộn, trên máy tính (điện
+   thoại dùng thanh điều hướng dưới đáy riêng, xem .bottomnav bên dưới) —
+   --topbar-h được JS đo và cập nhật (đo thật, vì thanh trên có thể xuống
+   2 dòng tùy độ rộng cửa sổ) để hàng tab luôn nằm sát ngay dưới, không đè
+   lên hay để hở khoảng trống. */
+@media(min-width:681px){
+  .tabbar{position:sticky;top:var(--topbar-h,64px);z-index:25;background:var(--bg);}
+}
 
 /* ===== BOTTOM NAV (điện thoại) =====
    Trên màn hình rộng vẫn dùng hàng tab ngang phía trên như cũ (đủ chỗ, ít
@@ -183,7 +196,7 @@ body.privacy-on .chart-box:has(.chart-empty)::after{content:"";}
 /* Ô nhập hạn mức ngân sách (VNĐ) vẫn là số thật gõ tay — làm mờ luôn cho
    nhất quán với phần "đã chi" ngay cạnh nó đã bị ẩn bằng dấu chấm. Không
    đụng tới ô % (phân bổ đầu tư, % mục tiêu đầu tư) vì đó không phải số tiền. */
-body.privacy-on input[data-budget-cat]{filter:blur(5px);}
+body.privacy-on input[data-budget-cat],body.privacy-on input[data-asset-balance]{filter:blur(5px);}
 .ctooltip{position:fixed;pointer-events:none;background:var(--surface-3);border:1px solid var(--border-strong);border-radius:7px;padding:8px 11px;font-size:12px;line-height:1.5;box-shadow:0 6px 18px rgba(0,0,0,.22);z-index:200;opacity:0;transition:opacity .08s;max-width:220px;}
 .ctooltip.show{opacity:1;}
 .ctooltip b{font-family:var(--font-mono);}
@@ -222,6 +235,12 @@ table.dt tr:hover td{background:var(--surface-2);}
 .pill.invest{background:var(--s1);color:#fff;}
 .rowbtn{border:1px solid var(--border);background:var(--surface);color:var(--text-muted);border-radius:6px;padding:4px 9px;font-size:11.5px;font-weight:600;}
 .rowbtn:hover{color:var(--critical);border-color:var(--critical);}
+/* Số dư tài sản: mặc định hiện chữ tĩnh + icon cây bút nhỏ; bấm icon mới hiện
+   ô nhập (xem renderAssetsTab/initAssetsTab). */
+.balance-cell{display:inline-flex;align-items:center;gap:6px;justify-content:flex-end;}
+.edit-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:none;background:transparent;color:var(--text-faint);border-radius:5px;flex:none;padding:0;}
+.edit-icon-btn svg{width:14px;height:14px;}
+.edit-icon-btn:hover{color:var(--accent);background:var(--surface-2);}
 .empty-note{font-size:13px;color:var(--text-muted);padding:20px 4px;text-align:center;}
 
 /* ===== FORM ===== */
@@ -229,7 +248,7 @@ table.dt tr:hover td{background:var(--surface-2);}
 .form-grid>*{min-width:0;}
 @media(min-width:760px){.form-grid.tx{grid-template-columns:1fr 1.3fr 1.6fr 1.6fr 1fr auto;align-items:end;}}
 @media(min-width:640px){.form-grid.asset{grid-template-columns:1.3fr 1.6fr 1fr 1.6fr auto;align-items:end;}}
-@media(min-width:640px){.form-grid.sheetsync{grid-template-columns:1fr auto auto;align-items:end;}}
+@media(min-width:640px){.form-grid.sheetsync{grid-template-columns:1fr 1fr;align-items:end;}}
 .field{display:flex;flex-direction:column;gap:5px;}
 .field label{font-size:11.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;}
 .field input,.field select{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:9px 11px;font-family:inherit;font-size:13.5px;}
@@ -352,19 +371,25 @@ table.dt tr:hover td{background:var(--surface-2);}
         <span class="dbchip" id="sheetChip"><span class="dot"></span><span id="sheetChipTxt">Chưa bật</span></span>
       </div>
       <div class="form-grid sheetsync" style="max-width:760px;">
-        <div class="field"><input type="url" id="sheetUrl" placeholder="URL Web App (Apps Script) …/exec" aria-label="URL Web App"></div>
-        <button type="button" class="btn btn-secondary" id="btnSheetTest">Kiểm tra</button>
-        <button type="button" class="btn btn-primary" id="btnSheetSave">Lưu</button>
+        <div class="field"><label for="sheetUrl">URL Web App (Apps Script)</label><input type="url" id="sheetUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off"></div>
+        <div class="field"><label for="sheetToken">Token bí mật</label><input type="password" id="sheetToken" placeholder="Dán token từ Apps Script" autocomplete="off"></div>
+      </div>
+      <div class="sync-toolbar">
+        <button type="button" class="btn btn-secondary" id="btnSheetSave">Lưu cấu hình</button>
+        <button type="button" class="btn btn-secondary" id="btnSheetTest">Kiểm tra kết nối</button>
+        <button type="button" class="btn btn-primary" id="btnSheetSyncNow">↻ Đồng bộ ngay</button>
+        <span class="note-inline" id="sheetLastSync"></span>
       </div>
       <p class="note-inline" id="sheetBridgeStatus" style="margin-top:8px;"></p>
       <div class="sync-toolbar">
-        <button type="button" class="backup-btn" id="btnSheetSyncNow">↻ Đồng bộ ngay</button>
+        <button type="button" class="backup-btn" id="btnClearToken">Xóa token đã lưu</button>
         <button type="button" class="backup-btn" id="btnDedupeTx" title="Dùng khi thấy giao dịch bị nhân đôi sau lần đầu bật đồng bộ 2 chiều">Dọn trùng lặp</button>
         <span class="note-inline" id="sheetSyncNowStatus"></span>
       </div>
       <details class="sync-help">
         <summary>Cách hoạt động &amp; hướng dẫn triển khai</summary>
-        <p>Giao dịch thêm/xóa ở app tự ghi sang Google Sheet, và ngược lại — sửa trực tiếp trên Sheet cũng tự về app (kiểm tra lại mỗi ~15–20 giây, và ngay khi bạn mở lại app). Cần triển khai kèm file <code>GhiSoGiaoDich.gs</code> bản mới nhất (Phiên bản 5).</p>
+        <p>Giao dịch thêm/xóa ở app tự ghi sang Google Sheet, và ngược lại — sửa trực tiếp trên Sheet cũng tự về app (kiểm tra lại mỗi ~15–20 giây, và ngay khi bạn mở lại app). Cần triển khai kèm file <code>GhiSoGiaoDich.gs</code> bản mới nhất (Phiên bản 6).</p>
+        <p>Token chỉ có tác dụng như "mật khẩu" giữa app và Apps Script, để người lạ không thể tự đoán link Web App rồi chỉnh sửa dữ liệu Sheet của bạn — muốn đồng bộ được, họ phải có cả URL lẫn đúng Token (đặt ở đầu file <code>GhiSoGiaoDich.gs</code>, biến <code>SYNC_TOKEN</code>). Ô Token bí mật ở trên luôn ẩn ký tự và không hiện lại giá trị đã lưu trên màn hình sau khi Lưu — nếu quên, mở lại giá trị <code>SYNC_TOKEN</code> trong Apps Script rồi dán lại vào đây.</p>
       </details>
     </div>
     <div class="panel">
@@ -494,6 +519,12 @@ var INCOME_CATS=["Lương","Thưởng","Thu Nhập Phụ / Freelance","Thu Nhậ
 var EXPENSE_CATS=["Nhà Ở / Thuê Nhà","Điện & Nước","Internet & Điện Thoại","Đi Chợ / Thực Phẩm","Đi Lại / Xăng Xe","Ăn Uống Bên Ngoài","Giải Trí","Y Tế / Sức Khỏe","Mua Sắm","Giáo Dục","Bảo Hiểm","Trả Nợ / Vay","Dịch Vụ Đăng Ký (Thuê Bao)","Chi Phí Khác","Thể Thao"];
 var INVEST_CATS=["Quỹ Dự Phòng","Cổ Phiếu / ETF","Quỹ Tương Hỗ","Vàng","Tiền Điện Tử","Quỹ Hưu Trí","Quỹ Bất Động Sản","Đầu Tư Khác"];
 var ASSET_TYPES=["Tiền Mặt","Tiền Gửi Ngân Hàng","Ví Điện Tử","Chứng Chỉ Quỹ","Chứng Khoán","Vàng","Tài Sản Khác"];
+// Icon cây bút cho nút "Sửa số dư" ở tab Tài Sản — số dư hiển thị dạng chữ
+// tĩnh (đẹp, gọn) theo mặc định, chỉ hiện ô nhập khi bấm vào icon này.
+var PENCIL='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+// id tài sản đang ở chế độ chỉnh sửa số dư (null = không có dòng nào đang sửa) —
+// biến trạng thái tạm thời của giao diện, không lưu vào state/DB.
+var editingAssetId = null;
 var MONTH_LABELS=["Th1","Th2","Th3","Th4","Th5","Th6","Th7","Th8","Th9","Th10","Th11","Th12"];
 var CAT_COLORS=["var(--s1)","var(--s2)","var(--s3)","var(--s4)","var(--s5)","var(--s6)"];
 
@@ -513,7 +544,7 @@ var state = {
   db:null, dbReady:false,
   month: today.getMonth()+1, year: today.getFullYear(),
   tx: [], budgets: {}, investChannels: [], assets: [], snapshots: [],
-  settings: { investTargetPct: 0.1, sheetWebhookUrl: "" },
+  settings: { investTargetPct: 0.1, sheetWebhookUrl: "", sheetToken: "" },
   activeTab: "dashboard", dbMode: "local",
   privacyMode: (function(){ try{ return localStorage.getItem("sotc_privacy_v1")==="1"; }catch(e){ return false; } })()
 };
@@ -566,6 +597,20 @@ function initPrivacyToggle(){
 }
 
 /* ================= TABS ================= */
+// Đo chiều cao thật của thanh trên cùng (.topbar) và lưu vào biến CSS
+// --topbar-h, để hàng tab (.tabbar) cố định (position:sticky) ngay sát dưới
+// nó khi cuộn trên máy tính — không thể dùng một con số cố định vì thanh
+// trên có thể xuống 2 dòng tùy độ rộng cửa sổ (period picker, các nút xuất/
+// nhập dữ liệu, token…). ResizeObserver tự cập nhật lại mỗi khi chiều cao
+// đó đổi (co giãn cửa sổ, xuống dòng, đổi cỡ chữ hệ thống…).
+function syncTopbarHeight(){
+  var tb = document.querySelector(".topbar");
+  if(!tb) return;
+  var apply = function(){ document.documentElement.style.setProperty("--topbar-h", tb.offsetHeight+"px"); };
+  apply();
+  if(window.ResizeObserver){ new ResizeObserver(apply).observe(tb); }
+  else { window.addEventListener("resize", apply); }
+}
 function initTabs(){
   document.getElementById("tabbar").addEventListener("click", function(e){
     var b=e.target.closest(".tabbtn"); if(!b) return;
@@ -732,6 +777,10 @@ async function initDB(){
         setSheetChip(!!v.sheetWebhookUrl);
         if(v.sheetWebhookUrl && mode==="local") startSheetPolling();
       }
+      // Token không bao giờ đổ ngược vào ô input (xem ghi chú ở updateTokenPlaceholder) —
+      // chỉ nhớ trong state để gửi kèm mỗi yêu cầu, và đổi placeholder báo "đã lưu".
+      if(typeof v.sheetToken==="string") state.settings.sheetToken=v.sheetToken;
+      updateTokenPlaceholder();
     }
     renderAll();
   }));
@@ -928,8 +977,35 @@ function setSyncNowMsg(msg, warn){
   s.textContent = msg;
   s.style.color = warn ? "var(--critical)" : "var(--text-faint)";
 }
-async function saveSheetWebhookUrl(url){
+// Token KHÔNG BAO GIỜ được đổ ngược vào ô input trên màn hình (kể cả dạng
+// ẩn ký tự) — chỉ giữ trong state (bộ nhớ) để gửi kèm mỗi yêu cầu. Ô chỉ
+// hiện placeholder báo "đã lưu" hay chưa; muốn đổi token phải gõ giá trị
+// MỚI, không sửa được giá trị cũ ngay trên màn hình.
+function updateTokenPlaceholder(){
+  var t=document.getElementById("sheetToken"); if(!t) return;
+  if(document.activeElement===t) return; // đang gõ dở thì đừng đụng vào
+  t.placeholder = state.settings.sheetToken ? "•••••••••••• (đã lưu — để trống nếu không đổi)" : "Dán token từ Apps Script";
+}
+var LAST_SYNC_KEY = "sotc_last_sync_v1";
+function markLastSync(){
+  var ts = Date.now();
+  try{ localStorage.setItem(LAST_SYNC_KEY, String(ts)); }catch(e){}
+  renderLastSync(ts);
+}
+function renderLastSync(ts){
+  var el=document.getElementById("sheetLastSync"); if(!el) return;
+  if(!ts){ try{ ts = +localStorage.getItem(LAST_SYNC_KEY) || null; }catch(e){ ts=null; } }
+  if(!ts){ el.textContent=""; return; }
+  var d = new Date(ts);
+  var pad=function(n){ return String(n).padStart(2,"0"); };
+  el.textContent = "Đồng bộ lần cuối: "+pad(d.getDate())+"/"+pad(d.getMonth()+1)+"/"+d.getFullYear()+" lúc "+pad(d.getHours())+":"+pad(d.getMinutes());
+}
+async function saveSheetConfig(url, token){
   state.settings.sheetWebhookUrl = url;
+  // token===undefined nghĩa là ô Token bí mật để trống lúc Lưu → GIỮ
+  // NGUYÊN token đã lưu trước đó (không phải xóa). Muốn xóa hẳn, dùng nút
+  // "Xóa token đã lưu" (gọi hàm này với token="").
+  if(token !== undefined) state.settings.sheetToken = token;
   if(state.db){
     try{
       var current = {};
@@ -940,22 +1016,38 @@ async function saveSheetWebhookUrl(url){
 }
 function initSheetBridge(){
   var urlInp=document.getElementById("sheetUrl");
+  var tokenInp=document.getElementById("sheetToken");
   if(!urlInp) return;
+  updateTokenPlaceholder();
+  renderLastSync();
   document.getElementById("btnSheetSave").addEventListener("click", async function(){
     var url = urlInp.value.trim();
-    await saveSheetWebhookUrl(url);
+    var tokenTyped = tokenInp.value; // để trống = giữ nguyên token cũ
+    await saveSheetConfig(url, tokenTyped.length>0 ? tokenTyped.trim() : undefined);
+    tokenInp.value = ""; // xóa khỏi ô ngay sau khi lưu — không hiện lại token thật trên màn hình
+    updateTokenPlaceholder();
     setSheetChip(!!url);
     setSheetStatus(url ? "Đã lưu — đồng bộ tự động cả hai chiều." : "Đã tắt đồng bộ tự động.", url?"ok":"");
     if(url) startSheetPolling();
   });
+  document.getElementById("btnClearToken").addEventListener("click", async function(){
+    if(!state.settings.sheetToken){ setSheetStatus("Chưa có token nào được lưu.", ""); return; }
+    if(!confirm("Xóa token đã lưu? Sau khi xóa, Apps Script sẽ không yêu cầu token nữa nếu biến SYNC_TOKEN trong script cũng để trống — nếu script vẫn đặt token, đồng bộ sẽ lỗi cho tới khi bạn nhập lại token đúng.")) return;
+    await saveSheetConfig(urlInp.value.trim(), "");
+    tokenInp.value=""; updateTokenPlaceholder();
+    setSheetStatus("Đã xóa token đã lưu trong app.", "");
+  });
   document.getElementById("btnSheetTest").addEventListener("click", async function(){
     var url = urlInp.value.trim();
     if(!url){ setSheetStatus("Nhập URL Web App trước đã.", "warn"); return; }
+    var token = tokenInp.value.trim() || state.settings.sheetToken || "";
     setSheetStatus("Đang kiểm tra…", "");
     try{
-      var res = await fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"ping"})});
+      var res = await fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"ping", token:token})});
       var txt = await res.text();
-      var ok=false; try{ ok = JSON.parse(txt).status==="ok"; }catch(e){}
+      var data=null; try{ data = JSON.parse(txt); }catch(e){}
+      if(data && data.authError){ setSheetStatus("Token không đúng — kiểm tra lại Token bí mật và giá trị SYNC_TOKEN trong Apps Script.", "warn"); return; }
+      var ok = !!(data && data.status==="ok");
       setSheetStatus(ok ? "Kết nối thành công. ✓" : "Không đọc được phản hồi — kiểm tra thử trong Google Sheet xem có dòng mới không.", ok?"ok":"warn");
     }catch(e){ setSheetStatus("Không kết nối được — kiểm tra lại URL và bước triển khai (Anyone can access) của Web App.", "warn"); }
   });
@@ -1019,7 +1111,7 @@ function pushToSheet(tx){
   // như trước (trước đây chỉ thử đúng 1 lần rồi bỏ qua lỗi).
   unsyncedIds[tx._id] = Date.now();
   saveUnsyncedIds();
-  var payload = { action:"add", id:tx._id, date:tx.date, type:tx.type, category:tx.category, note:tx.note||"", amount:tx.amount };
+  var payload = { action:"add", id:tx._id, date:tx.date, type:tx.type, category:tx.category, note:tx.note||"", amount:tx.amount, token: state.settings.sheetToken||"" };
   fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(payload)}).catch(function(){ /* best-effort; lượt đồng bộ định kỳ sẽ tự thử lại nếu cần */ });
 }
 function pushDeleteToSheet(id){
@@ -1027,7 +1119,7 @@ function pushDeleteToSheet(id){
   if(!url || !id) return;
   markPending(id, "delete");
   delete unsyncedIds[id]; saveUnsyncedIds(); // đã xóa khỏi app rồi thì thôi không cần đẩy "add" nữa
-  fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"delete", id:id})}).catch(function(){ /* best-effort */ });
+  fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"delete", id:id, token: state.settings.sheetToken||""})}).catch(function(){ /* best-effort */ });
 }
 
 /* ---- Sheet → App (kéo về, định kỳ) ---- */
@@ -1070,14 +1162,24 @@ async function pullFromSheet(manual){
   sheetPullInFlight = true;
   if(manual) setSyncNowMsg("Đang đồng bộ…", false);
   try{
-    var res = await fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"list"})});
+    var res = await fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"list", token: state.settings.sheetToken||""})});
     var data=null; try{ data = JSON.parse(await res.text()); }catch(e){}
+    if(data && data.authError){
+      // Luôn báo lỗi token — kể cả ở lượt đồng bộ tự động, không chỉ khi
+      // bấm "Đồng bộ ngay" — vì đây là lỗi cấu hình dai dẳng (sẽ lặp lại ở
+      // MỌI lượt đồng bộ sau cho tới khi bạn sửa), người dùng cần biết ngay
+      // thay vì chỉ thấy im lặng không có gì xảy ra.
+      setSheetStatus("Token không đúng — kiểm tra lại Token bí mật và giá trị SYNC_TOKEN trong Apps Script.", "warn");
+      if(manual) setSyncNowMsg("Đồng bộ lỗi: sai token.", true);
+      return;
+    }
     if(!data || data.status!=="ok" || !Array.isArray(data.items)){
       if(manual) setSyncNowMsg("Không đọc được dữ liệu từ Sheet — kiểm tra URL/bản triển khai.", true);
       return;
     }
     cleanupPending();
     await reconcileFromSheet(data.items, url);
+    markLastSync();
     if(manual) setSyncNowMsg("Đã đồng bộ lúc " + new Date().toLocaleTimeString("vi-VN") + ".", false);
   }catch(e){
     if(manual) setSyncNowMsg("Không kết nối được tới Google Sheet.", true);
@@ -1098,7 +1200,7 @@ async function reconcileFromSheet(items, url){
     var it = untagged[i];
     var newId = "sheet"+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
     try{
-      var res = await fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"tag", row:it.row, id:newId, date:it.date, amount:it.amount})});
+      var res = await fetch(url, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"tag", row:it.row, id:newId, date:it.date, amount:it.amount, token: state.settings.sheetToken||""})});
       var out=null; try{ out = JSON.parse(await res.text()); }catch(e){}
       var finalId = (out && out.skipped && out.id) ? out.id : newId;
       markPending(finalId, "add");
@@ -1496,12 +1598,55 @@ function initAssetsTab(){
     document.getElementById("asName").value=""; document.getElementById("asBal").value=""; document.getElementById("asNote").value="";
   });
   document.getElementById("assetsTable").addEventListener("click", async function(e){
+    // Bấm icon cây bút: chuyển dòng đó sang chế độ sửa (hiện ô nhập, focus
+    // + chọn sẵn toàn bộ số để gõ đè nhanh).
+    var editBtn=e.target.closest("[data-edit-asset]");
+    if(editBtn){
+      editingAssetId = editBtn.getAttribute("data-edit-asset");
+      renderAssetsTab();
+      requestAnimationFrame(function(){
+        var inp=document.querySelector('[data-asset-balance="'+editingAssetId+'"]');
+        if(inp){ inp.focus(); inp.select(); }
+      });
+      return;
+    }
     var b=e.target.closest("[data-del-asset]"); if(!b) return;
     var id=b.getAttribute("data-del-asset");
     if(!confirm("Xóa tài sản này?")) return;
     if(state.db){ try{ await state.db.collection("assets").doc(id).delete(); }catch(err){} }
     else { state.assets=state.assets.filter(function(a){return a._id!==id;}); renderAll(); }
   });
+  // Sửa số dư một tài sản đã có (ví dụ cập nhật lại số dư tài khoản ngân
+  // hàng mỗi tháng) — gõ số mới rồi rời khỏi ô (Tab/click ra ngoài) hoặc bấm
+  // Enter là lưu ngay, không cần xóa rồi thêm lại như trước.
+  document.getElementById("assetsTable").addEventListener("change", async function(e){
+    var inp=e.target.closest("[data-asset-balance]"); if(!inp) return;
+    var id=inp.getAttribute("data-asset-balance");
+    editingAssetId = null; // đóng chế độ sửa dù lưu thành công hay không
+    var a=state.assets.find(function(x){ return x._id===id; });
+    if(!a) return;
+    var val=+inp.value||0;
+    if(val===(+a.balance||0)){ renderAssetsTab(); return; } // không đổi gì — khỏi ghi thừa
+    var doc={ type:a.type, name:a.name, balance:val, note:a.note||"" };
+    if(state.db){ try{ await state.db.collection("assets").doc(id).set(doc); }catch(err){} }
+    else { a.balance=val; renderAll(); }
+  });
+  document.getElementById("assetsTable").addEventListener("keydown", function(e){
+    if(!e.target.closest("[data-asset-balance]")) return;
+    if(e.key==="Enter") e.target.blur();
+    else if(e.key==="Escape"){ editingAssetId=null; renderAssetsTab(); }
+  });
+  // Bấm ra ngoài ô nhập mà không đổi giá trị thì cũng đóng chế độ sửa lại
+  // (sự kiện change chỉ nổ khi giá trị thực sự thay đổi) — blur không nổi
+  // bọt (bubble) nên phải bắt ở pha capture.
+  document.getElementById("assetsTable").addEventListener("blur", function(e){
+    var inp=e.target.closest && e.target.closest("[data-asset-balance]");
+    if(!inp) return;
+    var id=inp.getAttribute("data-asset-balance");
+    setTimeout(function(){
+      if(editingAssetId===id){ editingAssetId=null; renderAssetsTab(); }
+    }, 120);
+  }, true);
   document.getElementById("btnSnapshot").addEventListener("click", async function(){
     var total = state.assets.reduce(function(s,a){ return s+(+a.balance||0); },0);
     var doc={ month: state.month, year: state.year, total: total, note: "Lưu thủ công từ web app" };
@@ -1519,7 +1664,12 @@ function renderAssetsTab(){
   ].map(function(t){ return '<div class="kpi"><span class="l">'+t[0]+'</span><span class="v tnum">'+t[1]+'</span></div>'; }).join("");
 
   var rows = state.assets.slice().sort(function(a,b){ return (b.balance||0)-(a.balance||0); }).map(function(a){
-    return '<tr><td>'+esc(a.type)+'</td><td>'+esc(a.name)+'</td><td class="tnum" style="text-align:right;">'+fmtVND(a.balance)+'</td><td>'+esc(a.note||"–")+'</td><td><button class="rowbtn" data-del-asset="'+a._id+'">Xóa</button></td></tr>';
+    var balCell = a._id===editingAssetId
+      ? '<input class="budget-input tnum" style="text-align:right;" type="number" step="1000" data-asset-balance="'+a._id+'" value="'+(+a.balance||0)+'" title="Sửa số dư">'
+      : '<span class="balance-cell"><span class="tnum">'+fmtVND(+a.balance||0)+'</span><button type="button" class="edit-icon-btn" data-edit-asset="'+a._id+'" title="Sửa số dư" aria-label="Sửa số dư">'+PENCIL+'</button></span>';
+    return '<tr><td>'+esc(a.type)+'</td><td>'+esc(a.name)+'</td>'+
+      '<td class="tnum" style="text-align:right;">'+balCell+'</td>'+
+      '<td>'+esc(a.note||"–")+'</td><td><button class="rowbtn" data-del-asset="'+a._id+'">Xóa</button></td></tr>';
   }).join("");
   document.getElementById("assetsTable").innerHTML = state.assets.length===0
     ? '<tr><td class="empty-note">Chưa có tài sản nào.</td></tr>'
@@ -1708,7 +1858,7 @@ function renderAll(){
 
 /* ================= BOOT ================= */
 function boot(){
-  initTheme(); initPrivacyToggle(); initPeriodPicker(); initTxForm(); initBudgetTab(); initInvestTab(); initAssetsTab(); initTabs(); initBackup(); initSheetBridge();
+  initTheme(); initPrivacyToggle(); initPeriodPicker(); initTxForm(); initBudgetTab(); initInvestTab(); initAssetsTab(); initTabs(); syncTopbarHeight(); initBackup(); initSheetBridge();
   initDB();
 }
 if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", boot); else boot();
