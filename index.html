@@ -19,6 +19,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Firebase (tùy chọn — chỉ dùng nếu bạn dán cấu hình ở khung "Đồng bộ Firebase"
+     trong app). Nạp trước để sẵn sàng dùng ngay khi cần; nếu mất mạng hoặc bạn
+     không dùng Firebase thì các thẻ này chỉ đơn giản không có tác dụng gì. -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <style>
 :root{
   --bg:#F7FAF7; --surface:#FFFFFF; --surface-2:#EFF5F1; --surface-3:#E3ECE6;
@@ -251,13 +257,16 @@ table.dt tr:hover td{background:var(--surface-2);}
 @media(min-width:640px){.form-grid.sheetsync{grid-template-columns:1fr 1fr;align-items:end;}}
 .field{display:flex;flex-direction:column;gap:5px;}
 .field label{font-size:11.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;}
-.field input,.field select{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:9px 11px;font-family:inherit;font-size:13.5px;}
-.field input:focus,.field select:focus{border-color:var(--accent);}
+.field input,.field select,.field textarea{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:9px 11px;font-family:inherit;font-size:13.5px;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);}
+.field textarea{font-family:var(--font-mono);font-size:12px;resize:vertical;}
 .btn{border:none;border-radius:var(--radius);padding:10px 18px;font-weight:700;font-size:13.5px;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;}
 .btn-primary{background:var(--accent);color:var(--on-accent);}
 .btn-primary:hover{filter:brightness(1.08);}
 .btn-secondary{background:transparent;border:1px solid var(--border-strong);color:var(--text);}
 .btn-secondary:hover{background:var(--surface-2);}
+.btn-google{background:var(--surface);border:1px solid var(--border-strong);color:var(--text);}
+.btn-google:hover{background:var(--surface-2);}
 .sync-hint{display:flex;gap:9px;align-items:flex-start;background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--radius-lg);padding:12px 15px;font-size:12.5px;color:var(--text);}
 .sync-hint svg{width:16px;height:16px;flex:none;color:var(--accent);margin-top:1px;}
 .sync-hint code{background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-family:var(--font-mono);font-size:11.5px;}
@@ -391,6 +400,21 @@ table.dt tr:hover td{background:var(--surface-2);}
         <p>Giao dịch và tài sản thêm/sửa/xóa ở app tự ghi sang Google Sheet (giao dịch → "Sổ Giao Dịch", tài sản → "Tổng Tài Sản"), và ngược lại — sửa trực tiếp trên Sheet cũng tự về app (kiểm tra lại mỗi ~15–20 giây, và ngay khi bạn mở lại app). Cần triển khai kèm file <code>GhiSoGiaoDich.gs</code> bản mới nhất (Phiên bản 7 — bản cũ hơn chỉ đồng bộ được giao dịch, chưa đồng bộ tài sản).</p>
         <p>Token chỉ có tác dụng như "mật khẩu" giữa app và Apps Script, để người lạ không thể tự đoán link Web App rồi chỉnh sửa dữ liệu Sheet của bạn — muốn đồng bộ được, họ phải có cả URL lẫn đúng Token (đặt ở đầu file <code>GhiSoGiaoDich.gs</code>, biến <code>SYNC_TOKEN</code>). Ô Token bí mật ở trên luôn ẩn ký tự và không hiện lại giá trị đã lưu trên màn hình sau khi Lưu — nếu quên, mở lại giá trị <code>SYNC_TOKEN</code> trong Apps Script rồi dán lại vào đây.</p>
       </details>
+    </div>
+    <div class="panel" id="firebasePanel" hidden>
+      <div class="panel-head">
+        <span class="panel-title" style="margin:0;">Đồng bộ Firebase (điện thoại ↔ máy tính)</span>
+        <span class="dbchip" id="fbChip"><span class="dot"></span><span id="fbChipTxt">Chưa bật</span></span>
+      </div>
+      <div class="sync-toolbar" id="fbAuthToolbar">
+        <button type="button" class="btn btn-google" id="btnFbGoogleSignIn">
+          <svg viewBox="0 0 18 18" width="16" height="16" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.98v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.66 9c0-.59.1-1.17.29-1.7V4.97H.98A9 9 0 0 0 0 9c0 1.45.35 2.82.98 4.03l2.97-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .98 4.97L3.95 7.3C4.66 5.17 6.65 3.58 9 3.58z"/></svg>
+          Đăng nhập bằng Google
+        </button>
+        <button type="button" class="backup-btn" id="btnFbSignOut" hidden>Đăng xuất</button>
+        <span class="note-inline" id="fbAuthStatus"></span>
+      </div>
+      <p class="note-inline" style="margin-top:8px;">Đăng nhập cùng 1 tài khoản Google trên mọi thiết bị — dữ liệu sẽ tự đồng bộ, không cần bấm gì thêm. Cấu hình dự án Firebase đã được đặt sẵn trong file này (biến <code>FIREBASE_CONFIG</code> đầu script).</p>
     </div>
     <div class="panel">
       <div class="panel-head"><span class="panel-title" style="margin:0;">Sổ giao dịch</span></div>
@@ -718,27 +742,28 @@ function updateModeCopy(mode){
   var hint=document.getElementById("syncHintTxt");
   var footer=document.getElementById("footerNote");
   var bridgePanel=document.getElementById("sheetBridgePanel");
-  if(bridgePanel) bridgePanel.hidden = mode!=="local";
+  var fbPanel=document.getElementById("firebasePanel");
+  // Khung Google Sheet và khung Firebase đều là các lựa chọn đồng bộ dành
+  // cho bản standalone (local/firebase) — ẩn cả hai khi chạy trong bản
+  // "cloud" (lưu trực tiếp qua Claude Artifacts, đã tự đồng bộ sẵn).
+  if(bridgePanel) bridgePanel.hidden = mode==="cloud";
+  if(fbPanel) fbPanel.hidden = mode==="cloud";
   if(mode==="cloud"){
     hint.innerHTML = 'Web app này lưu giao dịch riêng, không tự động kéo dữ liệu mới từ Google Sheet. Muốn nạp thêm giao dịch cũ hoặc dữ liệu vừa cập nhật trong Sheet, nhắn Claude: <code>đồng bộ giao dịch từ Google Sheet vào web app</code>. (Đồng bộ tự động 2 chiều chỉ khả dụng ở bản file .html chạy trực tiếp trên trình duyệt.)';
     footer.textContent = 'Sổ Tài Chính · dữ liệu lưu trực tuyến, riêng tư cho bạn · nguồn: Google Sheet "Sổ Quản Lý Tài Chính Cá Nhân"';
+  } else if(mode==="firebase"){
+    hint.innerHTML = 'Dữ liệu đang đồng bộ trực tiếp, gần như tức thời, với mọi thiết bị đã đăng nhập cùng tài khoản Firebase ở khung bên dưới. Vẫn có thể bật thêm đồng bộ Google Sheet song song nếu muốn xem/sửa dữ liệu trên Sheet.';
+    footer.textContent = 'Sổ Tài Chính · dữ liệu đồng bộ qua Firebase giữa các thiết bị của bạn';
   } else {
-    hint.innerHTML = 'Đây là bản chạy trực tiếp trong trình duyệt này — dữ liệu lưu ngay trên máy bạn (localStorage), không đồng bộ sang thiết bị khác. Bấm <b>Xuất dữ liệu</b> để sao lưu ra file .csv, hoặc <b>Nhập dữ liệu</b> để nạp lại. Có thể bật đồng bộ 2 chiều với Google Sheet ở khung bên dưới.';
+    hint.innerHTML = 'Đây là bản chạy trực tiếp trong trình duyệt này — dữ liệu lưu ngay trên máy bạn (localStorage), không đồng bộ sang thiết bị khác. Bấm <b>Xuất dữ liệu</b> để sao lưu ra file .csv, hoặc <b>Nhập dữ liệu</b> để nạp lại. Có thể bật đồng bộ 2 chiều với Google Sheet hoặc Firebase ở các khung bên dưới.';
     footer.textContent = 'Sổ Tài Chính · dữ liệu lưu ngay trên trình duyệt này · nguồn: Google Sheet "Sổ Quản Lý Tài Chính Cá Nhân"';
   }
 }
-async function initDB(){
-  var db=null, mode="local";
-  if(window.claude && window.claude.use){
-    try{ db = await window.claude.use("db"); }catch(e){ db=null; }
-  }
-  if(db){ mode="cloud"; }
-  else{ db = makeLocalDB(); if(db.isEmpty()) db.seed(SEED_WRITES); }
-
-  state.db = db; state.dbReady = true; state.dbMode = mode;
-  setDbChip(mode==="cloud"?"on":"local");
-  updateModeCopy(mode);
-
+// Gắn 5 listener thời gian thực (tx/budgets/investChannels/assets/assetSnapshots
+// + doc settings/app) vào một đối tượng db bất kỳ khớp giao diện
+// collection()/doc() — dùng chung cho lần khởi động đầu tiên (local hoặc
+// cloud) VÀ mỗi lần chuyển đổi sang/khỏi Firebase, để không lặp code.
+function subscribeToDB(db, mode){
   unsubs.push(db.collection("tx").onSnapshot(function(snap){
     state.tx = snap.docs.map(function(d){ var v=d.data()||{}; v._id=d.id; return v; });
     renderAll();
@@ -775,7 +800,9 @@ async function initDB(){
         var urlInp=document.getElementById("sheetUrl");
         if(urlInp && document.activeElement!==urlInp) urlInp.value=v.sheetWebhookUrl;
         setSheetChip(!!v.sheetWebhookUrl);
-        if(v.sheetWebhookUrl && mode==="local") startSheetPolling();
+        // Đồng bộ Sheet chạy song song ở cả bản "local" lẫn "firebase" (chỉ
+        // tắt hẳn ở bản "cloud" — nơi Claude Artifacts đã tự đồng bộ sẵn).
+        if(v.sheetWebhookUrl && mode!=="cloud") startSheetPolling();
       }
       // Token không bao giờ đổ ngược vào ô input (xem ghi chú ở updateTokenPlaceholder) —
       // chỉ nhớ trong state để gửi kèm mỗi yêu cầu, và đổi placeholder báo "đã lưu".
@@ -784,6 +811,187 @@ async function initDB(){
     }
     renderAll();
   }));
+}
+async function initDB(){
+  var db=null, mode="local";
+  if(window.claude && window.claude.use){
+    try{ db = await window.claude.use("db"); }catch(e){ db=null; }
+  }
+  if(db){ mode="cloud"; }
+  else{ db = makeLocalDB(); if(db.isEmpty()) db.seed(SEED_WRITES); }
+
+  state.db = db; state.dbReady = true; state.dbMode = mode;
+  setDbChip(mode==="cloud"?"on":"local");
+  updateModeCopy(mode);
+
+  subscribeToDB(db, mode);
+}
+
+/* ================= FIREBASE BRIDGE (đồng bộ trực tiếp điện thoại ↔ máy
+   tính, tùy chọn — chỉ hoạt động khi có khai báo FIREBASE_CONFIG bên dưới).
+   Không đụng gì tới bản chạy trong Claude Artifacts (mode "cloud") — ở đó
+   đã có sẵn cơ chế đồng bộ riêng.
+   Dữ liệu được lưu dưới users/{uid}/<collection>/<id> trên Firestore, quy
+   định bởi Security Rules chỉ cho phép chính uid đó đọc/ghi. Giao diện chỉ
+   hiện ô đăng nhập email/mật khẩu — cấu hình dự án đặt cố định ngay dưới
+   đây, sửa 1 lần trong file, không cần nhập lại trên từng thiết bị. */
+// ====== CẤU HÌNH FIREBASE — điền vào đây rồi lưu file, không cần làm gì
+// thêm trên giao diện. Lấy từ Firebase Console → biểu tượng ⚙️ Project
+// settings → mục "Your apps" → Web app → đoạn firebaseConfig. Để null nếu
+// chưa dùng Firebase — app vẫn chạy bình thường (lưu cục bộ / Google Sheet).
+var FIREBASE_CONFIG = {
+  apiKey: "AIzaSyA8biaUuTYMEfjYMEC6sOL4IUGAlqbZsUY",
+  authDomain: "so-tai.firebaseapp.com",
+  projectId: "so-tai",
+  storageBucket: "so-tai.firebasestorage.app",
+  messagingSenderId: "250164471459",
+  appId: "1:250164471459:web:ee23b084adc08ade360116"
+};
+var fbApp=null, fbAuth=null, fbAuthUnsub=null;
+// Bọc mỏng quanh firebase.firestore() để mọi collection/doc tự động nằm
+// dưới users/{uid}/... — khớp đúng giao diện collection()/doc() mà phần
+// còn lại của app đang dùng (giống hệt makeLocalDB()), nên không cần sửa gì
+// thêm ở initTxForm/initAssetsTab/... để chúng hoạt động được với Firestore.
+function makeFirestoreDB(fs, uid){
+  function fullPath(name){ return "users/"+uid+"/"+name; }
+  return {
+    collection: function(name){ return fs.collection(fullPath(name)); },
+    doc: function(path){ return fs.doc(fullPath(path)); }
+    // Cố ý KHÔNG có seed()/isEmpty()/importAll() — để applyImportedData()
+    // tự rơi xuống nhánh ghi từng dòng qua collection().doc().set(), vốn
+    // hoạt động đúng với Firestore; có các hàm đó (dù no-op) sẽ khiến app
+    // tưởng nhầm là "đã lo xong" và bỏ qua việc ghi thật.
+  };
+}
+function setFbChip(status){
+  var chip=document.getElementById("fbChip"), txt=document.getElementById("fbChipTxt");
+  if(!chip) return;
+  chip.className = "dbchip " + (status==="on"?"on":"");
+  txt.textContent = status==="on" ? "Đã bật" : status==="connecting" ? "Đang kết nối…" : "Chưa bật";
+}
+function setFbAuthStatus(msg, warn){
+  var s=document.getElementById("fbAuthStatus"); if(!s) return;
+  s.textContent=msg; s.style.color = warn ? "var(--critical)" : "var(--text-faint)";
+}
+function fbAuthErrorText(err){
+  var code=(err && err.code)||"";
+  if(code==="auth/unauthorized-domain") return "Domain đang chạy app chưa được phép đăng nhập Google — vào Firebase Console → Authentication → Settings → Authorized domains, thêm domain này (ví dụ ten-ban.github.io).";
+  if(code==="auth/operation-not-allowed") return "Đăng nhập Google chưa được bật — vào Firebase Console → Authentication → Sign-in method → bật Google.";
+  if(code==="auth/popup-closed-by-user") return "Đã đóng cửa sổ đăng nhập trước khi hoàn tất.";
+  if(code==="auth/account-exists-with-different-credential") return "Email này đã gắn với một cách đăng nhập khác.";
+  if(code==="auth/network-request-failed") return "Không kết nối được mạng tới Firebase.";
+  return "Lỗi: "+(err && err.message || String(err));
+}
+var googleProvider=null;
+function ensureGoogleProvider(){
+  if(!googleProvider && typeof firebase!=="undefined") googleProvider=new firebase.auth.GoogleAuthProvider();
+  return googleProvider;
+}
+// Google sign-in ưu tiên mở popup (nhanh, không rời trang); một số trình
+// duyệt di động / chế độ PWA cài vào màn hình chính chặn popup, lúc đó tự
+// chuyển sang signInWithRedirect (chuyển hẳn sang trang đăng nhập Google
+// rồi quay lại) — kết quả redirect được đọc lại mỗi lần connectFirebase()
+// chạy (xem getRedirectResult() bên dưới), nên quay lại app là tự đăng
+// nhập xong, không cần thao tác gì thêm.
+async function fbGoogleSignIn(){
+  if(!fbAuth){ setFbAuthStatus("Chưa kết nối được Firebase.", true); return; }
+  var provider=ensureGoogleProvider();
+  setFbAuthStatus("Đang mở cửa sổ đăng nhập Google...", false);
+  try{
+    await fbAuth.signInWithPopup(provider);
+  }catch(err){
+    var code=err && err.code;
+    if(code==="auth/popup-blocked"||code==="auth/cancelled-popup-request"||code==="auth/operation-not-supported-in-this-environment"){
+      try{ await fbAuth.signInWithRedirect(provider); }catch(err2){ setFbAuthStatus(fbAuthErrorText(err2), true); }
+    } else {
+      setFbAuthStatus(fbAuthErrorText(err), true);
+    }
+  }
+}
+// Lần đầu MỘT thiết bị đăng nhập vào tài khoản Firebase này mà Firestore
+// đang trống, coi như đây là thiết bị "gốc" — đẩy toàn bộ dữ liệu cục bộ
+// đang có lên Firestore, để không bị hiện ra trống trơn ngay sau khi bật.
+// Thiết bị thứ 2 đăng nhập sau đó sẽ thấy Firestore đã có dữ liệu nên bỏ
+// qua bước này, chỉ tải dữ liệu chung về theo cơ chế onSnapshot bình thường.
+async function migrateLocalDataToFirestore(fs, uid, localDump){
+  var batch=fs.batch(); var count=0;
+  Object.keys(localDump).forEach(function(col){
+    var docs=localDump[col]||{};
+    Object.keys(docs).forEach(function(id){
+      batch.set(fs.doc("users/"+uid+"/"+col+"/"+id), docs[id]);
+      count++;
+    });
+  });
+  if(count>0) await batch.commit();
+  return count;
+}
+async function switchToFirebaseDB(app, uid){
+  var fs=firebase.firestore(app);
+  try{
+    var probe=await fs.collection("users/"+uid+"/tx").limit(1).get();
+    if(probe.empty){
+      var localDump=(state.db && state.db.exportAll) ? state.db.exportAll() : null;
+      if(localDump && Object.keys(localDump).length) await migrateLocalDataToFirestore(fs, uid, localDump);
+    }
+  }catch(e){ /* Rules chưa đúng hoặc mất mạng — bỏ qua bước di dời, subscribe bên dưới sẽ tự báo lỗi rõ hơn nếu đọc cũng không được. */ }
+
+  unsubs.forEach(function(u){ try{ u(); }catch(e){} });
+  unsubs=[];
+  state.db = makeFirestoreDB(fs, uid);
+  state.dbMode = "firebase"; state.dbReady = true;
+  setDbChip("on");
+  updateModeCopy("firebase");
+  subscribeToDB(state.db, "firebase");
+}
+function switchToLocalDB(){
+  unsubs.forEach(function(u){ try{ u(); }catch(e){} });
+  unsubs=[];
+  var db=makeLocalDB();
+  state.db=db; state.dbMode="local"; state.dbReady=true;
+  setDbChip("local");
+  updateModeCopy("local");
+  subscribeToDB(db, "local");
+}
+function connectFirebase(cfg){
+  if(typeof firebase==="undefined"){ setFbAuthStatus("Không tải được thư viện Firebase (kiểm tra kết nối mạng rồi tải lại trang).", true); return; }
+  if(!fbApp){
+    try{ fbApp = firebase.apps && firebase.apps.length ? firebase.app() : firebase.initializeApp(cfg); }
+    catch(e){ setFbAuthStatus("Cấu hình Firebase không hợp lệ: "+e.message, true); return; }
+  }
+  fbAuth = firebase.auth(fbApp);
+  setFbChip("connecting");
+  document.getElementById("fbAuthToolbar").hidden=false;
+  if(fbAuthUnsub) fbAuthUnsub();
+  fbAuthUnsub = fbAuth.onAuthStateChanged(function(user){
+    var signInBtn=document.getElementById("btnFbGoogleSignIn"), signOutBtn=document.getElementById("btnFbSignOut");
+    if(user){
+      signInBtn.hidden=true; signOutBtn.hidden=false;
+      setFbAuthStatus("Đã đăng nhập: "+(user.displayName||user.email), false);
+      setFbChip("on");
+      switchToFirebaseDB(fbApp, user.uid);
+    } else {
+      signInBtn.hidden=false; signOutBtn.hidden=true;
+      setFbAuthStatus("Chưa đăng nhập.", false);
+      setFbChip("off");
+      if(state.dbMode==="firebase") switchToLocalDB(); // vừa đăng xuất trong lúc đang dùng Firebase — quay lại lưu cục bộ
+    }
+  });
+  // Đọc kết quả của một lần signInWithRedirect vừa quay lại (nếu có) — xem
+  // ghi chú ở fbGoogleSignIn(). Không có redirect nào đang chờ thì resolve
+  // với user rỗng, không gây lỗi gì.
+  fbAuth.getRedirectResult().catch(function(err){ setFbAuthStatus(fbAuthErrorText(err), true); });
+}
+function initFirebaseBridge(){
+  if(state.dbMode==="cloud") return; // bản Claude Artifacts đã tự đồng bộ sẵn, không cần Firebase
+  var fbPanel=document.getElementById("firebasePanel");
+  var hasConfig = !!(FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
+  if(fbPanel) fbPanel.hidden = !hasConfig; // chưa điền FIREBASE_CONFIG thì ẩn hẳn khung này, đỡ rối giao diện
+  if(!hasConfig) return;
+
+  document.getElementById("btnFbGoogleSignIn").addEventListener("click", fbGoogleSignIn);
+  document.getElementById("btnFbSignOut").addEventListener("click", function(){ if(fbAuth) fbAuth.signOut(); });
+
+  connectFirebase(FIREBASE_CONFIG);
 }
 
 /* ================= BACKUP: export / import (.csv — no external library needed) ================= */
@@ -2031,9 +2239,10 @@ function renderAll(){
 }
 
 /* ================= BOOT ================= */
-function boot(){
+async function boot(){
   initTheme(); initPrivacyToggle(); initPeriodPicker(); initTxForm(); initBudgetTab(); initInvestTab(); initAssetsTab(); initTabs(); syncTopbarHeight(); initBackup(); initSheetBridge();
-  initDB();
+  await initDB(); // đợi state.db (local/cloud) sẵn sàng trước khi Firebase có thể cần đọc nó để di dời dữ liệu lần đầu
+  initFirebaseBridge();
 }
 if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", boot); else boot();
 
