@@ -2160,11 +2160,15 @@ function initAssetsTab(){
 }
 function renderAssetsTab(){
   var total = state.assets.reduce(function(s,a){ return s+(+a.balance||0); },0);
+  // Tài sản ròng điều chỉnh = Tổng tài sản + toàn bộ Thu nhập (lương, thu nhập
+  // phụ, freelance...) − toàn bộ Chi tiêu, từ trước đến nay. Giao dịch loại
+  // "Đầu tư" không tính vào (chỉ là chuyển tiền sang tài sản, không làm đổi tổng).
+  var allIncome = sumTx(state.tx,T_INCOME);
   var allExpense = sumTx(state.tx,T_EXPENSE);
-  var net = total-allExpense;
+  var net = total+allIncome-allExpense;
   document.getElementById("assetsKpi").innerHTML = [
     ["Tổng cộng tài sản", fmtVND(total)],
-    ["Sau khi trừ toàn bộ chi tiêu (từ trước đến nay)", fmtVNDSigned(net)]
+    ["Sau khi cộng thu nhập và trừ chi tiêu (từ trước đến nay)", fmtVNDSigned(net)]
   ].map(function(t){ return '<div class="kpi"><span class="l">'+t[0]+'</span><span class="v tnum">'+t[1]+'</span></div>'; }).join("");
 
   var rows = state.assets.slice().sort(function(a,b){ return (b.balance||0)-(a.balance||0); }).map(function(a){
