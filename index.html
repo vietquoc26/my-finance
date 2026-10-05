@@ -300,7 +300,96 @@ table.dt tr:hover td{background:var(--surface-2);}
 .footer-note{text-align:center;color:var(--text-faint);font-size:11.5px;padding-block:12px 30px;}
 .section-divider{display:flex;align-items:center;justify-content:space-between;margin-top:6px;}
 .warn-inline{font-size:11.5px;color:var(--critical);font-weight:700;}
+/* ===== Intro logo animation (mở app) ===== */
+#introSplash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:var(--bg);cursor:pointer;animation:introOut .4s ease 1.95s both;-webkit-tap-highlight-color:transparent;}
+#introSplash.leaving{animation:introOut .25s ease 0s both;}
+#introSplash .intro-svg{width:min(62vw,230px);height:auto;overflow:visible;}
+#introSplash .intro-word{font-family:var(--font-display);font-size:30px;font-weight:700;color:var(--text);letter-spacing:.01em;animation:introRise .5s cubic-bezier(.2,.8,.2,1) 1.2s both;}
+#introSplash .intro-tag{font-size:12px;color:var(--text-muted);letter-spacing:.04em;animation:introRise .5s cubic-bezier(.2,.8,.2,1) 1.4s both;}
+#introSplash .intro-skip{position:absolute;bottom:max(22px,env(safe-area-inset-bottom));font-size:11.5px;color:var(--text-faint);animation:introRise .4s ease .7s both;}
+#introSplash .i-shadow{fill:var(--text);opacity:.10;transform-box:view-box;transform-origin:100px 168px;animation:iShadow .5s ease .35s both;}
+#introSplash .i-scene{animation:iSlide .55s cubic-bezier(.65,0,.35,1) .55s both;}
+#introSplash .i-backL{fill:var(--accent);opacity:.82;animation:iFadeIn .3s ease .85s both;}
+#introSplash .i-backR{fill:var(--accent);animation:iPop .45s cubic-bezier(.2,.9,.3,1.3) .05s both;transform-box:view-box;transform-origin:100px 95px;}
+#introSplash .i-page{fill:var(--surface);stroke:var(--surface-3);stroke-width:1;animation:iFadeIn .01s linear .0s both;}
+#introSplash .i-line{stroke:var(--surface-3);stroke-width:2.2;stroke-linecap:round;fill:none;stroke-dasharray:50;animation:iDraw .5s ease 1.0s both;}
+#introSplash .i-cover{transform-box:view-box;transform-origin:70px 95px;animation:iFlip .55s cubic-bezier(.65,0,.35,1) .55s both;}
+#introSplash .i-cover rect.i-cv{animation:iCoverFill .55s linear .55s both;}
+#introSplash .i-label{fill:var(--accent-2);animation:iLabel .55s linear .55s both;}
+#introSplash .i-leftlines{animation:iLeftLines .55s linear .55s both;}
+#introSplash .i-coin-drop{animation:iDrop .75s cubic-bezier(.3,0,.3,1) .85s both;}
+#introSplash .i-coin-spin{transform-box:fill-box;transform-origin:center;animation:iSpin .75s ease-in-out .85s both;}
+#introSplash .i-coin-face{fill:#E7B04A;stroke:#B8790A;stroke-width:2.5;}
+#introSplash .i-coin-ring{fill:none;stroke:#B8790A;stroke-width:1.2;opacity:.55;}
+#introSplash .i-coin-txt{font-family:var(--font-display);font-size:21px;font-weight:700;fill:#7A4C00;text-anchor:middle;}
+#introSplash .i-ping{fill:none;stroke:#E7B04A;stroke-width:2;transform-box:fill-box;transform-origin:center;animation:iPing .6s ease-out 1.55s both;}
+@keyframes introOut{0%,60%{opacity:1;visibility:visible;}to{opacity:0;visibility:hidden;pointer-events:none;}}
+@keyframes introRise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+@keyframes iShadow{from{opacity:0;transform:scaleX(.3);}to{opacity:.10;transform:scaleX(1);}}
+@keyframes iPop{from{opacity:0;transform:scale(.6);}to{opacity:1;transform:scale(1);}}
+@keyframes iSlide{from{transform:translateX(0);}to{transform:translateX(30px);}}
+@keyframes iFadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes iDraw{from{stroke-dashoffset:50;}to{stroke-dashoffset:0;}}
+@keyframes iFlip{0%{transform:scaleX(1);}100%{transform:scaleX(-1);}}
+@keyframes iCoverFill{0%,48%{fill:var(--accent);}52%,100%{fill:var(--surface);}}
+@keyframes iLabel{0%,45%{opacity:1;}50%,100%{opacity:0;}}
+@keyframes iLeftLines{0%,52%{opacity:0;}100%{opacity:1;}}
+@keyframes iDrop{0%{transform:translateY(-130px);opacity:0;}15%{opacity:1;}60%{transform:translateY(0);}78%{transform:translateY(-14px);}100%{transform:translateY(0);}}
+@keyframes iSpin{0%{transform:scaleX(1);}25%{transform:scaleX(-1);}50%{transform:scaleX(1);}75%{transform:scaleX(-.6);}100%{transform:scaleX(1);}}
+@keyframes iPing{from{opacity:.9;transform:scale(1);}to{opacity:0;transform:scale(2.2);}}
+@media (prefers-reduced-motion:reduce){
+  #introSplash{animation:introOut .3s ease .9s both;}
+  #introSplash *{animation:none !important;}
+}
 </style>
+
+<div id="introSplash" role="img" aria-label="Sổ Tài Chính">
+  <svg class="intro-svg" viewBox="0 0 200 190" aria-hidden="true" focusable="false">
+    <ellipse class="i-shadow" cx="100" cy="168" rx="62" ry="7"/>
+    <g class="i-scene">
+      <rect class="i-backL" x="6" y="36" width="68" height="118" rx="10"/>
+      <rect class="i-backR" x="66" y="36" width="68" height="118" rx="10"/>
+      <rect class="i-page" x="70" y="40" width="60" height="110" rx="6"/>
+      <g class="i-rightlines">
+        <path class="i-line" d="M80 66h40"/><path class="i-line" d="M80 82h40"/><path class="i-line" d="M80 98h40"/><path class="i-line" d="M80 114h28"/>
+      </g>
+      <g class="i-cover">
+        <rect class="i-cv" x="70" y="40" width="60" height="110" rx="6"/>
+        <rect class="i-label" x="84" y="78" width="32" height="26" rx="4"/>
+        <g class="i-leftlines">
+          <path class="i-line" d="M80 66h40" style="animation:none;stroke-dasharray:none"/><path class="i-line" d="M80 82h40" style="animation:none;stroke-dasharray:none"/><path class="i-line" d="M80 98h40" style="animation:none;stroke-dasharray:none"/><path class="i-line" d="M80 114h28" style="animation:none;stroke-dasharray:none"/>
+        </g>
+      </g>
+    </g>
+    <g transform="translate(100 98)">
+      <g class="i-coin-drop">
+        <circle class="i-ping" cx="0" cy="0" r="20"/>
+        <g class="i-coin-spin">
+          <circle class="i-coin-face" cx="0" cy="0" r="20"/>
+          <circle class="i-coin-ring" cx="0" cy="0" r="15"/>
+          <text class="i-coin-txt" x="0" y="7.5">₫</text>
+        </g>
+      </g>
+    </g>
+  </svg>
+  <div class="intro-word">Sổ Tài Chính</div>
+  <div class="intro-tag">Thu chi · Ngân sách · Đầu tư · Tài sản</div>
+  <div class="intro-skip">Chạm để bỏ qua</div>
+</div>
+<script>
+(function(){
+  var el=document.getElementById("introSplash"); if(!el) return;
+  var skip=false;
+  try{ skip = /[?&]nointro\b/.test(location.search) || window.__SKIP_INTRO===true; }catch(e){}
+  function kill(){ if(el && el.parentNode){ el.parentNode.removeChild(el); } el=null; }
+  if(skip){ kill(); return; }
+  function leave(){ if(!el) return; el.classList.add("leaving"); setTimeout(kill,300); }
+  el.addEventListener("click",leave);
+  el.addEventListener("touchstart",function(){ leave(); },{passive:true});
+  document.addEventListener("keydown",function(){ leave(); },{once:true});
+  setTimeout(kill,2500);
+})();
+</script>
 
 <div class="topbar">
   <div class="wrap topbar-inner">
